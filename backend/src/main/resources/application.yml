@@ -2,22 +2,35 @@ spring:
   application:
     name: chamati-backend
 
-  # Lê o .env da raiz do projeto (backend/ é o diretório de execução). Opcional.
+  # Carrega o .env da raiz do projeto (o backend roda a partir de backend/).
+  # Opcional: em produção as variáveis vêm do ambiente do servidor/container.
   config:
     import: optional:file:../.env[.properties]
 
+  # Conexão: todas as credenciais vêm de variáveis de ambiente.
+  # Sem valor padrão de propósito: se faltar variável, a aplicação não sobe.
   datasource:
-    url: ${DB_URL:jdbc:mysql://localhost:3306/chamati?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC}
-    username: ${DB_USERNAME:chamati}
-    password: ${DB_PASSWORD:}
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 2
+      connection-timeout: 20000
 
+  # Hibernate apenas valida: o esquema pertence ao Flyway.
   jpa:
     open-in-view: false
     hibernate:
-      ddl-auto: validate          # o esquema é do Flyway, nunca do Hibernate
+      ddl-auto: validate
     properties:
       hibernate.jdbc.time_zone: UTC
 
+  # Flyway executa V1 e V2 (e V100 só no perfil dev).
   flyway:
     enabled: true
     locations: classpath:db/migration
+    validate-on-migrate: true
+    baseline-on-migrate: false
+    out-of-order: false
+    clean-disabled: true        # nunca apagar o banco por engano

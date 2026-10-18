@@ -1,7 +1,15 @@
+# Perfil de desenvolvimento: SPRING_PROFILES_ACTIVE=dev
+# DB_PASSWORD continua obrigatório (vem do .env ou do ambiente).
 spring:
+  datasource:
+    url: ${DB_URL:jdbc:mysql://localhost:3306/chamati?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC}
+    username: ${DB_USERNAME:chamati}
+
   flyway:
+    # inclui os dados de demonstração (V100): 6 usuários, 12 chamados etc.
     locations: classpath:db/migration,classpath:db/seed-dev
 
 logging:
   level:
     br.com.chamati: DEBUG
+    org.flywaydb: INFO

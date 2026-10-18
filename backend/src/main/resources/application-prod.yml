@@ -1,0 +1,10 @@
+# Perfil de produção: SPRING_PROFILES_ACTIVE=prod
+# Exige DB_URL, DB_USERNAME e DB_PASSWORD no ambiente (sem padrões).
+# Não carrega db/seed-dev: nenhum dado de demonstração entra em produção.
+spring:
+  flyway:
+    locations: classpath:db/migration
+
+logging:
+  level:
+    br.com.chamati: INFO
