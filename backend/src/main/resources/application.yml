@@ -1,0 +1,23 @@
+spring:
+  application:
+    name: chamati-backend
+
+  # Lê o .env da raiz do projeto (backend/ é o diretório de execução). Opcional.
+  config:
+    import: optional:file:../.env[.properties]
+
+  datasource:
+    url: ${DB_URL:jdbc:mysql://localhost:3306/chamati?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC}
+    username: ${DB_USERNAME:chamati}
+    password: ${DB_PASSWORD:}
+
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate          # o esquema é do Flyway, nunca do Hibernate
+    properties:
+      hibernate.jdbc.time_zone: UTC
+
+  flyway:
+    enabled: true
+    locations: classpath:db/migration

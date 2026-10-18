@@ -1,0 +1,7 @@
+spring:
+  flyway:
+    locations: classpath:db/migration,classpath:db/seed-dev
+
+logging:
+  level:
+    br.com.chamati: DEBUG
