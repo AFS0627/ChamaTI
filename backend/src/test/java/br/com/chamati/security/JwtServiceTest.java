@@ -46,7 +46,7 @@ class JwtServiceTest {
         Jwt jwt = decoder.decode(token);
 
         assertThat(jwt.getSubject()).isEqualTo("7");
-        assertThat(jwt.getIssuer().toString()).isEqualTo("chamati");
+        assertThat(jwt.getClaimAsString("iss")).isEqualTo("chamati");
         assertThat(jwt.<String>getClaim("perfil")).isEqualTo("TECNICO");
         assertThat(jwt.getId()).isNotBlank();
         assertThat(Duration.between(jwt.getIssuedAt(), jwt.getExpiresAt())).isEqualTo(Duration.ofMinutes(15));
