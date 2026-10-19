@@ -72,6 +72,18 @@ public class GlobalExceptionHandler {
         return resposta(HttpStatus.CONFLICT, "A operação conflita com dados já existentes.");
     }
 
+    @ExceptionHandler(AutenticacaoException.class)
+    ResponseEntity<ErroResponse> naoAutenticado(AutenticacaoException e) {
+        return resposta(HttpStatus.UNAUTHORIZED, e.getMessage());
+    }
+
+    @ExceptionHandler(TentativasExcedidasException.class)
+    ResponseEntity<ErroResponse> muitasTentativas(TentativasExcedidasException e) {
+        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                .header(org.springframework.http.HttpHeaders.RETRY_AFTER, String.valueOf(e.getSegundos()))
+                .body(ErroResponse.de(429, HttpStatus.TOO_MANY_REQUESTS.getReasonPhrase(), e.getMessage()));
+    }
+
     private static ResponseEntity<ErroResponse> resposta(HttpStatus status, String mensagem) {
         return ResponseEntity.status(status)
                 .body(ErroResponse.de(status.value(), status.getReasonPhrase(), mensagem));

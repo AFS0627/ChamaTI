@@ -19,6 +19,11 @@ public interface RefreshTokenRepository extends JpaRepository<RefreshToken, Long
     @Query("update RefreshToken t set t.revogadoEm = :agora where t.usuario.id = :usuarioId and t.revogadoEm is null")
     int revogarTodosDoUsuario(@Param("usuarioId") Long usuarioId, @Param("agora") Instant agora);
 
+    /** Revoga um token somente se ainda estiver ativo; 0 significa que já estava revogado (reuso). */
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("update RefreshToken t set t.revogadoEm = :agora where t.id = :id and t.revogadoEm is null")
+    int revogarSeAtivo(@Param("id") Long id, @Param("agora") Instant agora);
+
     /** Limpeza periódica de tokens expirados. */
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("delete from RefreshToken t where t.expiraEm < :limite")

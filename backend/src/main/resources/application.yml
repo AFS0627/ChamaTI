@@ -34,3 +34,13 @@ spring:
     baseline-on-migrate: false
     out-of-order: false
     clean-disabled: true        # nunca apagar o banco por engano
+
+# JWT de acesso (HS256). O segredo vem do ambiente e não tem padrão: a aplicação não sobe sem ele
+# nem com menos de 32 bytes. Gere com: openssl rand -base64 48
+app:
+  security:
+    jwt:
+      secret: ${JWT_SECRET}
+      issuer: chamati
+      access-ttl: PT15M     # vida curta do access token
+      refresh-ttl: P7D      # sessão máxima sem novo login
