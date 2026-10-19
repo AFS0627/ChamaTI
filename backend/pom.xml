@@ -18,10 +18,10 @@
     <description>API do sistema de chamados de TI chamaTI</description>
 
     <properties>
-        <java.version>21</java.version>
-        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    </properties>
-
+    <java.version>21</java.version>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <testcontainers.version>1.21.4</testcontainers.version>
+</properties>
     <dependencies>
         <dependency>
             <groupId>org.springframework.boot</groupId>
