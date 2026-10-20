@@ -73,10 +73,10 @@ class UsuarioControllerIntegrationTest extends IntegrationTestBase {
                 .andExpect(status().isConflict());
 
         mvc.perform(post("/api/usuarios").with(ADMIN).contentType(MediaType.APPLICATION_JSON).content("""
-                {"nome":"","email":"nao-e-email","senha":"123","perfil":null}"""))
+                {"nome":"","email":"nao-e-email","senha":"xQz7","perfil":null}"""))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.campos.length()").value(org.hamcrest.Matchers.greaterThanOrEqualTo(4)))
-                .andExpect(content -> assertThat(content.getResponse().getContentAsString()).doesNotContain("123"));
+                .andExpect(content -> assertThat(content.getResponse().getContentAsString()).doesNotContain("xQz7"));
     }
 
     @Test
