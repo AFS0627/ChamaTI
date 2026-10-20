@@ -84,6 +84,17 @@ public class GlobalExceptionHandler {
                 .body(ErroResponse.de(429, HttpStatus.TOO_MANY_REQUESTS.getReasonPhrase(), e.getMessage()));
     }
 
+    @ExceptionHandler(AcessoNegadoException.class)
+    ResponseEntity<ErroResponse> acessoNegado(AcessoNegadoException e) {
+        return resposta(HttpStatus.FORBIDDEN, e.getMessage());
+    }
+
+    /** Duas pessoas alteraram o mesmo chamado ao mesmo tempo (@Version). */
+    @ExceptionHandler(org.springframework.orm.ObjectOptimisticLockingFailureException.class)
+    ResponseEntity<ErroResponse> versaoConflitante(org.springframework.orm.ObjectOptimisticLockingFailureException e) {
+        return resposta(HttpStatus.CONFLICT, "O chamado foi alterado por outra pessoa. Recarregue e tente novamente.");
+    }
+
     private static ResponseEntity<ErroResponse> resposta(HttpStatus status, String mensagem) {
         return ResponseEntity.status(status)
                 .body(ErroResponse.de(status.value(), status.getReasonPhrase(), mensagem));

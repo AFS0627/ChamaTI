@@ -67,7 +67,7 @@ public class ChamadoConsultaService {
         };
     }
 
-    private static boolean visivel(Chamado c, UsuarioPrincipal atual) {
+    static boolean visivel(Chamado c, UsuarioPrincipal atual) {
         return switch (atual.perfil()) {
             case ADMIN -> true;
             case SOLICITANTE -> c.getSolicitante().getId().equals(atual.id());
