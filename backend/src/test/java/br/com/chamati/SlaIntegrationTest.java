@@ -72,10 +72,12 @@ class SlaIntegrationTest extends IntegrationTestBase {
 
     @Test
     void validaPrazos() throws Exception {
-        atualizar("MEDIA", ADMIN, "{\"prazoPrimeiraRespostaMin\":300,\"prazoResolucaoMin\":200}")
-                .andExpect(status().isUnprocessableEntity());                  // resolução < primeira resposta
+        // sucesso antes das falhas: após uma exceção de serviço a transação do teste fica marcada para rollback
         atualizar("MEDIA", ADMIN, "{\"prazoPrimeiraRespostaMin\":200,\"prazoResolucaoMin\":200}")
                 .andExpect(status().isOk());                                    // igual é permitido (CHECK >=)
+
+        atualizar("MEDIA", ADMIN, "{\"prazoPrimeiraRespostaMin\":300,\"prazoResolucaoMin\":200}")
+                .andExpect(status().isUnprocessableEntity());                  // resolução < primeira resposta
         atualizar("MEDIA", ADMIN, "{\"prazoPrimeiraRespostaMin\":0,\"prazoResolucaoMin\":100}")
                 .andExpect(status().isBadRequest());
         atualizar("MEDIA", ADMIN, "{\"prazoPrimeiraRespostaMin\":10}").andExpect(status().isBadRequest());

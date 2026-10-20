@@ -25,6 +25,7 @@ abstract class IntegrationTestBase {
         registry.add("spring.datasource.url", MYSQL::getJdbcUrl);
         registry.add("spring.datasource.username", MYSQL::getUsername);
         registry.add("spring.datasource.password", MYSQL::getPassword);
+        registry.add("spring.jpa.properties.hibernate.generate_statistics", () -> "true");
         registry.add("app.security.jwt.secret", () -> "segredo-apenas-para-testes-0123456789-abcdefghij");
     }
 }

@@ -54,22 +54,24 @@ class CatalogoIntegrationTest extends IntegrationTestBase {
 
     @Test
     void criaEAtualizaCategoriaComNomeUnico() throws Exception {
+        // sucessos antes das falhas: após uma exceção de serviço a transação do teste fica marcada para rollback
         String corpo = enviar(post("/api/categorias"), ADMIN, "{\"nome\":\"  Segurança \",\"descricao\":\"Incidentes\"}")
                 .andExpect(status().isCreated()).andExpect(header().exists("Location"))
                 .andExpect(jsonPath("$.nome").value("Segurança")).andExpect(jsonPath("$.ativo").value(true))
                 .andReturn().getResponse().getContentAsString();
         Number id = JsonPath.read(corpo, "$.id");
 
-        enviar(post("/api/categorias"), ADMIN, "{\"nome\":\"seguranca\"}").andExpect(status().isConflict()); // sem acento/caixa
-        enviar(post("/api/categorias"), ADMIN, "{\"nome\":\"HARDWARE\"}").andExpect(status().isConflict());
-        enviar(post("/api/categorias"), ADMIN, "{\"nome\":\"  \"}").andExpect(status().isBadRequest());
-
         enviar(put("/api/categorias/" + id), ADMIN, "{\"nome\":\"Segurança da Informação\"}")
                 .andExpect(status().isOk()).andExpect(jsonPath("$.nome").value("Segurança da Informação"));
-        enviar(put("/api/categorias/" + id), ADMIN, "{\"nome\":\"Software\"}").andExpect(status().isConflict());
-        enviar(put("/api/categorias/9999"), ADMIN, "{\"nome\":\"Y\"}").andExpect(status().isNotFound());
         mvc.perform(get("/api/categorias").with(ADMIN).param("q", "segur"))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.totalElementos").value(1));
+
+        enviar(post("/api/categorias"), ADMIN, "{\"nome\":\"seguranca da informacao\"}")
+                .andExpect(status().isConflict());                                     // sem acento/caixa
+        enviar(post("/api/categorias"), ADMIN, "{\"nome\":\"HARDWARE\"}").andExpect(status().isConflict());
+        enviar(post("/api/categorias"), ADMIN, "{\"nome\":\"  \"}").andExpect(status().isBadRequest());
+        enviar(put("/api/categorias/" + id), ADMIN, "{\"nome\":\"Software\"}").andExpect(status().isConflict());
+        enviar(put("/api/categorias/9999"), ADMIN, "{\"nome\":\"Y\"}").andExpect(status().isNotFound());
     }
 
     @Test
@@ -78,29 +80,36 @@ class CatalogoIntegrationTest extends IntegrationTestBase {
                 .andExpect(status().isOk()).andExpect(jsonPath("$.ativo").value(false));
 
         mvc.perform(get("/api/categorias/ativas").with(SOLICITANTE)).andExpect(jsonPath("$.length()").value(7));
-        mvc.perform(get("/api/categorias/1").with(SOLICITANTE)).andExpect(status().isNotFound());
-        mvc.perform(get("/api/categorias/1/subcategorias").with(SOLICITANTE)).andExpect(status().isNotFound());
         mvc.perform(get("/api/categorias/1").with(ADMIN)).andExpect(status().isOk());
         mvc.perform(get("/api/categorias/1/subcategorias").with(ADMIN))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(3));
         mvc.perform(get("/api/categorias").with(ADMIN).param("ativo", "false"))
                 .andExpect(jsonPath("$.totalElementos").value(1));
 
+        mvc.perform(get("/api/categorias/1").with(SOLICITANTE)).andExpect(status().isNotFound());
+        mvc.perform(get("/api/categorias/1/subcategorias").with(SOLICITANTE)).andExpect(status().isNotFound());
+    }
+
+    @Test
+    void reativarCategoriaDevolveAVisibilidade() throws Exception {
+        mvc.perform(patch("/api/categorias/1/desativar").with(ADMIN)).andExpect(status().isOk());
         mvc.perform(patch("/api/categorias/1/ativar").with(ADMIN)).andExpect(jsonPath("$.ativo").value(true));
         mvc.perform(get("/api/categorias/1").with(SOLICITANTE)).andExpect(status().isOk());
+        mvc.perform(get("/api/categorias/ativas").with(SOLICITANTE)).andExpect(jsonPath("$.length()").value(8));
     }
 
     @Test
     void subcategoriasPertencemSempreACategoriaDaUrl() throws Exception {
+        // sucessos antes das falhas: após uma exceção de serviço a transação do teste fica marcada para rollback
         enviar(post("/api/categorias/3/subcategorias"), ADMIN, "{\"nome\":\"Firewall\"}")
                 .andExpect(status().isCreated()).andExpect(jsonPath("$.categoriaId").value(3));
-        enviar(post("/api/categorias/3/subcategorias"), ADMIN, "{\"nome\":\"wi-fi\"}").andExpect(status().isConflict());
         enviar(post("/api/categorias/1/subcategorias"), ADMIN, "{\"nome\":\"Wi-Fi\"}")   // outro pai: permitido
                 .andExpect(status().isCreated());
-        enviar(post("/api/categorias/9999/subcategorias"), ADMIN, "{\"nome\":\"Z\"}").andExpect(status().isNotFound());
-
         enviar(put("/api/categorias/3/subcategorias/8"), ADMIN, "{\"nome\":\"VPN corporativa\"}")
                 .andExpect(status().isOk()).andExpect(jsonPath("$.categoriaId").value(3));
+
+        enviar(post("/api/categorias/3/subcategorias"), ADMIN, "{\"nome\":\"wi-fi\"}").andExpect(status().isConflict());
+        enviar(post("/api/categorias/9999/subcategorias"), ADMIN, "{\"nome\":\"Z\"}").andExpect(status().isNotFound());
         enviar(put("/api/categorias/1/subcategorias/8"), ADMIN, "{\"nome\":\"Qualquer\"}")  // VPN não é da categoria 1
                 .andExpect(status().isNotFound());
         enviar(put("/api/categorias/3/subcategorias/8"), ADMIN, "{\"nome\":\"Wi-Fi\",\"categoriaId\":1}")

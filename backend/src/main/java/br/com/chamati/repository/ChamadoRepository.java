@@ -34,6 +34,9 @@ public interface ChamadoRepository extends JpaRepository<Chamado, Long> {
               and (:status is null or c.status = :status)
               and (:prioridade is null or c.prioridade = :prioridade)
               and (:categoriaId is null or cat.id = :categoriaId)
+              and (:protocolo is null or c.protocolo = :protocolo)
+              and (:escopoTecnicoId is null or tec.id = :escopoTecnicoId or tec.id is null
+                     or sol.id = :escopoTecnicoId)
               and (:criadoDe is null or c.criadoEm >= :criadoDe)
               and (:criadoAte is null or c.criadoEm < :criadoAte)
               and (:termo is null or c.protocolo = :termo or c.titulo like concat('%', :termo, '%'))
@@ -57,6 +60,8 @@ public interface ChamadoRepository extends JpaRepository<Chamado, Long> {
                                       @Param("criadoAte") Instant criadoAte,
                                       @Param("termo") String termo,
                                       @Param("atrasados") boolean atrasados,
+                                      @Param("protocolo") String protocolo,
+                                      @Param("escopoTecnicoId") Long escopoTecnicoId,
                                       @Param("agora") Instant agora,
                                       Pageable pageable);
 
@@ -66,9 +71,10 @@ public interface ChamadoRepository extends JpaRepository<Chamado, Long> {
      */
     default Page<ChamadoResumo> buscar(ChamadoFiltro f, Pageable pageable) {
         String termo = f.termo() == null || f.termo().isBlank() ? null : f.termo().trim();
+        String protocolo = f.protocolo() == null || f.protocolo().isBlank() ? null : f.protocolo().trim();
         return buscarResumos(f.solicitanteId(), f.tecnicoId(), f.somenteSemTecnico(), f.status(),
                 f.prioridade(), f.categoriaId(), f.criadoDe(), f.criadoAte(), termo,
-                f.somenteAtrasados(), Instant.now(), pageable);
+                f.somenteAtrasados(), protocolo, f.escopoTecnicoId(), Instant.now(), pageable);
     }
 
     /** Totais por status para painéis; ambos os filtros são opcionais. */
