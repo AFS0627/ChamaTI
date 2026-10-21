@@ -50,6 +50,11 @@ public final class MaquinaEstadosChamado {
         return de != StatusChamado.RESOLVIDO && de != StatusChamado.FECHADO;
     }
 
+    /** Chamados fechados não recebem comentários: reabra o chamado antes. */
+    public static boolean podeComentar(StatusChamado de) {
+        return de != StatusChamado.FECHADO;
+    }
+
     public static StatusChamado statusAposReabertura(boolean temTecnico) {
         return temTecnico ? StatusChamado.EM_ATENDIMENTO : StatusChamado.ABERTO;
     }

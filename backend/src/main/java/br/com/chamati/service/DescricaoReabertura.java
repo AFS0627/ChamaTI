@@ -28,7 +28,7 @@ public final class DescricaoReabertura {
         return texto + sufixo;
     }
 
-    private static String data(Instant instante) {
+    static String data(Instant instante) {
         return instante == null ? "nenhum" : DATA.format(instante);
     }
 }

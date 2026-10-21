@@ -88,4 +88,11 @@ class MaquinaEstadosChamadoTest {
         assertThat(MaquinaEstadosChamado.statusAposReabertura(true)).isEqualTo(EM_ATENDIMENTO);
         assertThat(MaquinaEstadosChamado.statusAposReabertura(false)).isEqualTo(ABERTO);
     }
+
+    @Test
+    void soChamadosFechadosNaoRecebemComentarios() {
+        for (StatusChamado s : StatusChamado.values()) {
+            assertThat(MaquinaEstadosChamado.podeComentar(s)).as(s.name()).isEqualTo(s != FECHADO);
+        }
+    }
 }
