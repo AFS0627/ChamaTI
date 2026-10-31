@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#101828">
+  <title>ChamaTI — Central de chamados</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div id="toast" class="toast" role="status"></div>
+  <section id="loginScreen" class="login-screen">
+    <div class="login-decoration"><div class="orb orb-one"></div><div class="orb orb-two"></div><div class="login-brand"><div class="brand-mark">C</div><span>chama<span class="brand-light">TI</span></span></div><div class="login-copy"><span class="eyebrow">CENTRAL DE SERVIÇOS DE TI</span><h1>Suporte que<br><em>resolve.</em></h1><p>Abra solicitações, acompanhe atendimentos e mantenha tudo organizado em um só lugar.</p><div class="login-foot">CHAMATI · GESTÃO DE SERVIÇOS</div></div></div>
+    <div class="login-panel"><form id="loginForm" class="login-card"><div class="mobile-brand"><div class="brand-mark">C</div><b>chama<span>TI</span></b></div><span class="eyebrow">BEM-VINDO DE VOLTA</span><h2>Acesse sua conta</h2><p class="muted">Entre com suas credenciais para continuar.</p>
+      <label for="apiUrl">Endereço da API</label><input id="apiUrl" type="url" value="" placeholder="http://localhost:8080" autocomplete="url">
+      <label for="email">E-mail</label><input id="email" type="email" placeholder="seu@email.com" autocomplete="username" required>
+      <label for="password">Senha</label><input id="password" type="password" placeholder="Sua senha" autocomplete="current-password" required>
+      <button class="btn btn-primary btn-full" type="submit">Entrar <span>→</span></button><div id="loginError" class="form-error"></div><div class="login-note"><span class="status-dot"></span> Conexão direta com a API ChamaTI</div></form></div>
+  </section>
+
+  <div id="appShell" class="app-shell hidden">
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-brand"><div class="brand-mark">C</div><span>chama<span>TI</span></span></div>
+      <div class="workspace-label">WORKSPACE</div>
+      <nav class="main-nav">
+        <button class="nav-item active" data-page="dashboard"><span class="nav-icon">▦</span> Visão geral</button>
+        <button class="nav-item" data-page="tickets"><span class="nav-icon">▤</span> Chamados <span class="nav-count" id="navTicketCount">—</span></button>
+        <button class="nav-item" data-page="new-ticket"><span class="nav-icon">＋</span> Abrir chamado</button>
+        <button class="nav-item admin-only hidden" data-page="users"><span class="nav-icon">♙</span> Usuários</button>
+      </nav>
+      <div class="sidebar-bottom"><div class="help-card"><div class="help-icon">✳</div><b>Precisa de ajuda?</b><p>Consulte a documentação da API para detalhes técnicos.</p><a href="/swagger-ui.html" target="_blank" rel="noreferrer">Abrir Swagger ↗</a></div><button id="logoutBtn" class="logout-btn"><span>↪</span> Sair da conta</button></div>
+    </aside>
+    <main class="main-area">
+      <header class="topbar"><button id="mobileMenu" class="mobile-menu">☰</button><div class="breadcrumb">Workspace <span>/</span> <b id="breadcrumbPage">Visão geral</b></div><div class="topbar-right"><span class="top-date" id="todayLabel"></span><div class="user-chip"><div class="avatar" id="userAvatar">U</div><div><b id="userName">Usuário</b><small id="userRole">PERFIL</small></div></div></div></header>
+      <div class="content">
+        <section id="page-dashboard" class="page">
+          <div class="page-heading"><div><span class="eyebrow">PAINEL DE CONTROLE</span><h1>Visão geral</h1><p>Acompanhe o que está acontecendo na central de suporte.</p></div><button class="btn btn-primary" data-go="new-ticket">＋ Novo chamado</button></div>
+          <div class="stats-grid">
+            <article class="stat-card"><div class="stat-top"><span>Total de chamados</span><span class="stat-icon purple">▤</span></div><strong id="statTotal">—</strong><small>Chamados visíveis para você</small></article>
+            <article class="stat-card"><div class="stat-top"><span>Abertos</span><span class="stat-icon blue">◷</span></div><strong id="statOpen">—</strong><small>Aguardando atendimento</small></article>
+            <article class="stat-card"><div class="stat-top"><span>Em atendimento</span><span class="stat-icon orange">⌁</span></div><strong id="statProgress">—</strong><small>Em andamento pela equipe</small></article>
+            <article class="stat-card"><div class="stat-top"><span>Resolvidos</span><span class="stat-icon green">✓</span></div><strong id="statResolved">—</strong><small>Prontos para encerramento</small></article>
+          </div>
+          <section class="panel recent-panel"><div class="panel-heading"><div><h3>Chamados recentes</h3><p>Últimas solicitações registradas</p></div><button class="text-btn" data-go="tickets">Ver todos →</button></div><div id="recentTable" class="table-wrap"><div class="loading">Carregando chamados...</div></div></section>
+        </section>
+
+        <section id="page-tickets" class="page hidden">
+          <div class="page-heading"><div><span class="eyebrow">CENTRAL DE ATENDIMENTO</span><h1>Chamados</h1><p>Pesquise e acompanhe as solicitações.</p></div><button class="btn btn-primary" data-go="new-ticket">＋ Novo chamado</button></div>
+          <section class="panel"><div class="filters"><div class="search-box"><span>⌕</span><input id="ticketSearch" placeholder="Buscar por título ou protocolo..."></div><select id="statusFilter"><option value="">Todos os status</option><option>ABERTO</option><option>EM_ATENDIMENTO</option><option>AGUARDANDO_USUARIO</option><option>AGUARDANDO_TERCEIRO</option><option>RESOLVIDO</option><option>FECHADO</option></select><select id="priorityFilter"><option value="">Todas as prioridades</option><option>BAIXA</option><option>MEDIA</option><option>ALTA</option><option>CRITICA</option></select><button id="refreshTickets" class="btn btn-outline">↻ Atualizar</button></div><div id="ticketsTable" class="table-wrap"><div class="loading">Carregando...</div></div></section>
+        </section>
+
+        <section id="page-new-ticket" class="page hidden">
+          <div class="page-heading"><div><span class="eyebrow">NOVA SOLICITAÇÃO</span><h1>Abrir chamado</h1><p>Descreva o problema para que a equipe possa ajudar.</p></div></div>
+          <form id="newTicketForm" class="panel form-panel"><div class="form-section-title"><span>01</span><div><b>Informações do chamado</b><small>Preencha os dados da solicitação.</small></div></div><div class="form-grid"><div class="field full"><label for="ticketTitle">Título <i>*</i></label><input id="ticketTitle" maxlength="150" required placeholder="Ex.: Computador não liga"></div><div class="field"><label for="ticketCategory">Categoria <i>*</i></label><select id="ticketCategory" required><option value="">Selecione uma categoria</option></select></div><div class="field"><label for="ticketSubcategory">Subcategoria</label><select id="ticketSubcategory"><option value="">Selecione (opcional)</option></select></div><div class="field"><label for="ticketPriority">Prioridade</label><select id="ticketPriority"><option value="BAIXA">Baixa</option><option value="MEDIA" selected>Média</option><option value="ALTA">Alta</option><option value="CRITICA">Crítica</option></select><small class="field-hint">A prioridade crítica é permitida somente para ADMIN e TECNICO.</small></div><div class="field full"><label for="ticketDescription">Descrição <i>*</i></label><textarea id="ticketDescription" rows="6" maxlength="10000" required placeholder="Descreva o que aconteceu, quando começou e quais mensagens de erro aparecem..."></textarea></div></div><div class="form-actions"><button type="button" class="btn btn-outline" data-go="tickets">Cancelar</button><button class="btn btn-primary" type="submit">Enviar chamado <span>→</span></button></div></form>
+        </section>
+
+        <section id="page-detail" class="page hidden">
+          <button class="back-link" id="backToTickets">← Voltar aos chamados</button><div id="ticketDetail"></div>
+        </section>
+
+        <section id="page-users" class="page hidden">
+          <div class="page-heading"><div><span class="eyebrow">ADMINISTRAÇÃO</span><h1>Usuários</h1><p>Consulte as contas cadastradas no ChamaTI.</p></div></div><section class="panel"><div class="filters"><div class="search-box"><span>⌕</span><input id="userSearch" placeholder="Buscar nome ou e-mail..."></div><button id="refreshUsers" class="btn btn-outline">↻ Atualizar</button></div><div id="usersTable" class="table-wrap"></div></section>
+        </section>
+      </div>
+      <footer class="footer"><span>© 2026 ChamaTI</span><span>Central de serviços de tecnologia</span></footer>
+    </main>
+  </div>
+  <script src="app.js"></script>
+</body>
+</html>
