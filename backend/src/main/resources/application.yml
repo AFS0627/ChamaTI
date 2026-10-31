@@ -44,3 +44,15 @@ app:
       issuer: chamati
       access-ttl: PT15M     # vida curta do access token
       refresh-ttl: P7D      # sessão máxima sem novo login
+
+# Documentação OpenAPI (springdoc): JSON em /v3/api-docs e interface em /swagger-ui.html.
+# Desabilitada no perfil prod (application-prod.yml).
+springdoc:
+  api-docs:
+    enabled: true
+  swagger-ui:
+    enabled: true
+    persist-authorization: true
+    operations-sorter: method
+    tags-sorter: alpha
+  default-produces-media-type: application/json

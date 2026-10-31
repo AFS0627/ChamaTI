@@ -8,3 +8,10 @@ spring:
 logging:
   level:
     br.com.chamati: INFO
+
+# A documentação da API não é exposta em produção.
+springdoc:
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false

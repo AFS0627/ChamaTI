@@ -3,6 +3,7 @@ package br.com.chamati.dto;
 import br.com.chamati.enums.Prioridade;
 import br.com.chamati.enums.SituacaoSla;
 import br.com.chamati.enums.StatusChamado;
+import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.Instant;
 
 public record ChamadoResponse(
@@ -23,11 +24,11 @@ public record ChamadoResponse(
         Instant resolvidoEm,
         Instant fechadoEm,
         Instant reabertoEm,
-        int totalReaberturas,
+        @Schema(description = "Quantas vezes o chamado foi reaberto.") int totalReaberturas,
         String solucao,
-        Instant slaPrimeiraRespostaLimite,
-        Instant slaResolucaoLimite,
-        SituacaoSla situacaoSlaPrimeiraResposta,
-        SituacaoSla situacaoSlaResolucao,
-        Long versao) {
+        @Schema(description = "Data limite da primeira resposta (criação + prazo da política).") Instant slaPrimeiraRespostaLimite,
+        @Schema(description = "Data limite da resolução (criação + prazo da política).") Instant slaResolucaoLimite,
+        @Schema(description = "Calculada no momento da resposta.") SituacaoSla situacaoSlaPrimeiraResposta,
+        @Schema(description = "Calculada no momento da resposta.") SituacaoSla situacaoSlaResolucao,
+        @Schema(description = "Versão para controle de concorrência; pode ser devolvida no campo versao das operações de gestão.") Long versao) {
 }
