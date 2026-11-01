@@ -50,6 +50,8 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.POST, "/api/auth/login", "/api/auth/refresh", "/api/auth/logout").permitAll()
                 .requestMatchers(HttpMethod.GET, "/v3/api-docs", "/v3/api-docs/**", "/swagger-ui.html",
                         "/swagger-ui/**").permitAll()
+                    .requestMatchers(HttpMethod.GET, "/", "/index.html",
+                            "/styles.css", "/app.js").permitAll()
                 .anyRequest().authenticated());
         return http.build();
     }
