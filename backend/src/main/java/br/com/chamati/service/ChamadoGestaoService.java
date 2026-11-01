@@ -4,6 +4,7 @@ import br.com.chamati.dto.AlterarPrioridadeRequest;
 import br.com.chamati.dto.AlterarStatusRequest;
 import br.com.chamati.dto.AtribuirTecnicoRequest;
 import br.com.chamati.dto.ChamadoResponse;
+import br.com.chamati.dto.DesatribuirTecnicoRequest;
 import br.com.chamati.dto.ReabrirChamadoRequest;
 import br.com.chamati.dto.ResolverChamadoRequest;
 import br.com.chamati.entity.Chamado;
@@ -32,6 +33,7 @@ import org.springframework.transaction.annotation.Transactional;
  * Ordem das verificações: chamado visível (404) → permissão (403) → versão (409) → regras de negócio (422).
  *
  * Quem pode: atribuir — ADMIN (qualquer técnico ativo) ou TECNICO assumindo para si um chamado sem técnico;
+ * desatribuir — somente ADMIN;
  * alterar status, alterar prioridade e resolver — ADMIN ou o técnico responsável; fechar — ADMIN ou o solicitante do chamado;
  * reabrir — ADMIN, o solicitante ou o técnico responsável.
  */
@@ -89,6 +91,43 @@ public class ChamadoGestaoService {
         registrar(c, ator, TipoEventoHistorico.ATRIBUICAO, "tecnico",
                 anterior == null ? null : anterior.getNome(), novo.getNome(),
                 anterior == null ? "Chamado atribuído ao técnico" : "Técnico responsável alterado");
+        return mapper.paraResponse(c, agora);
+    }
+
+    /**
+     * Remove o técnico responsável (somente ADMIN) sem excluir o chamado. atribuido_em volta a nulo e, se o chamado
+     * estava em atendimento ou aguardando, ele retorna à fila com status ABERTO. A primeira resposta e os limites de SLA
+     * são preservados. Registra ATRIBUICAO (técnico → vazio) e, quando o status muda, ALTERACAO_STATUS.
+     * Chamados RESOLVIDO ou FECHADO mantêm o responsável.
+     */
+    public ChamadoResponse desatribuirTecnico(Long id, DesatribuirTecnicoRequest req, UsuarioPrincipal ator) {
+        Chamado c = carregar(id, ator);
+        if (ator.perfil() != Perfil.ADMIN) {
+            throw negado("Somente administradores podem remover o técnico responsável.");
+        }
+        verificarVersao(c, req == null ? null : req.versao());
+        if (!MaquinaEstadosChamado.podeDesatribuir(c.getStatus())) {
+            throw new RegraNegocioException("Não é possível remover o técnico de um chamado " + c.getStatus() + ".");
+        }
+        Usuario anterior = c.getTecnico();
+        if (anterior == null) {
+            throw new RegraNegocioException("O chamado não tem técnico atribuído.");
+        }
+        String motivo = req == null ? null : vazioParaNulo(req.motivo());
+        StatusChamado de = c.getStatus();
+        StatusChamado para = MaquinaEstadosChamado.statusAposDesatribuicao();
+
+        Instant agora = agora();
+        c.setTecnico(null);
+        c.setAtribuidoEm(null);
+        c.setStatus(para);
+        chamados.saveAndFlush(c);
+        registrar(c, ator, TipoEventoHistorico.ATRIBUICAO, "tecnico", anterior.getNome(), null,
+                motivo == null ? "Técnico responsável removido" : "Técnico responsável removido: " + motivo);
+        if (de != para) {
+            registrar(c, ator, TipoEventoHistorico.ALTERACAO_STATUS, "status", de.name(), para.name(),
+                    "Chamado devolvido à fila");
+        }
         return mapper.paraResponse(c, agora);
     }
 

@@ -10,6 +10,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -19,6 +20,7 @@ import br.com.chamati.dto.AlterarPrioridadeRequest;
 import br.com.chamati.dto.AlterarStatusRequest;
 import br.com.chamati.dto.AtribuirTecnicoRequest;
 import br.com.chamati.dto.ChamadoResponse;
+import br.com.chamati.dto.DesatribuirTecnicoRequest;
 import br.com.chamati.dto.ReabrirChamadoRequest;
 import br.com.chamati.dto.ResolverChamadoRequest;
 import br.com.chamati.entity.Chamado;
@@ -40,6 +42,7 @@ import br.com.chamati.repository.UsuarioRepository;
 import br.com.chamati.security.UsuarioPrincipal;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -750,6 +753,163 @@ class ChamadoGestaoServiceTest {
         // versão correta: aparece a regra de negócio
         assertThatThrownBy(() -> service.alterarPrioridade(ID,
                 new AlterarPrioridadeRequest(Prioridade.ALTA, null, 0L), pCarlos))
+                .isInstanceOf(RegraNegocioException.class);
+
+        nadaFoiGravado();
+    }
+
+    // =====================================================================
+    // desatribuir técnico
+    // =====================================================================
+
+    private List<HistoricoChamado> eventosGravados(int quantidade) {
+        ArgumentCaptor<HistoricoChamado> captor = ArgumentCaptor.forClass(HistoricoChamado.class);
+        verify(historico, times(quantidade)).save(captor.capture());
+        return captor.getAllValues();
+    }
+
+    @Test
+    void adminRemoveOTecnicoEODevolveAFilaPreservandoPrimeiraRespostaESla() {
+        dado(carlos, StatusChamado.EM_ATENDIMENTO);
+        Instant atribuidoEm = AGORA.minusSeconds(3000);
+        Instant primeiraResposta = AGORA.minusSeconds(2800);
+        Instant limitePrimeira = AGORA.plusSeconds(100);
+        Instant limiteResolucao = AGORA.plusSeconds(200);
+        chamado.setAtribuidoEm(atribuidoEm);
+        chamado.setPrimeiraRespostaEm(primeiraResposta);
+        chamado.setSlaPrimeiraRespostaLimite(limitePrimeira);
+        chamado.setSlaResolucaoLimite(limiteResolucao);
+
+        ChamadoResponse r = service.desatribuirTecnico(ID, new DesatribuirTecnicoRequest("  Técnico em férias  ", null), pAdmin);
+
+        assertThat(chamado.getTecnico()).isNull();
+        assertThat(chamado.getAtribuidoEm()).isNull();
+        assertThat(chamado.getStatus()).isEqualTo(StatusChamado.ABERTO);
+        assertThat(chamado.getSolicitante()).isSameAs(ana);
+        assertThat(chamado.getPrimeiraRespostaEm()).isEqualTo(primeiraResposta);
+        assertThat(chamado.getSlaPrimeiraRespostaLimite()).isEqualTo(limitePrimeira);
+        assertThat(chamado.getSlaResolucaoLimite()).isEqualTo(limiteResolucao);
+        assertThat(r.tecnico()).isNull();
+        assertThat(r.status()).isEqualTo(StatusChamado.ABERTO);
+        verify(chamados).saveAndFlush(chamado);
+
+        List<HistoricoChamado> eventos = eventosGravados(2);
+        HistoricoChamado remocao = eventos.get(0);
+        assertThat(remocao.getTipoEvento()).isEqualTo(TipoEventoHistorico.ATRIBUICAO);
+        assertThat(remocao.getCampo()).isEqualTo("tecnico");
+        assertThat(remocao.getValorAnterior()).isEqualTo("Carlos Mendes");
+        assertThat(remocao.getValorNovo()).isNull();
+        assertThat(remocao.getDescricao()).isEqualTo("Técnico responsável removido: Técnico em férias");
+        assertThat(remocao.getAutor()).isSameAs(admin);
+        HistoricoChamado status = eventos.get(1);
+        assertThat(status.getTipoEvento()).isEqualTo(TipoEventoHistorico.ALTERACAO_STATUS);
+        assertThat(status.getValorAnterior()).isEqualTo("EM_ATENDIMENTO");
+        assertThat(status.getValorNovo()).isEqualTo("ABERTO");
+        assertThat(status.getDescricao()).isEqualTo("Chamado devolvido à fila");
+    }
+
+    @ParameterizedTest
+    @EnumSource(value = StatusChamado.class, names = {"AGUARDANDO_USUARIO", "AGUARDANDO_TERCEIRO"})
+    void chamadoAguardandoTambemVoltaParaAFila(StatusChamado de) {
+        dado(carlos, de);
+
+        service.desatribuirTecnico(ID, new DesatribuirTecnicoRequest(null, null), pAdmin);
+
+        assertThat(chamado.getStatus()).isEqualTo(StatusChamado.ABERTO);
+        assertThat(chamado.getTecnico()).isNull();
+        assertThat(eventosGravados(2).get(1).getValorAnterior()).isEqualTo(de.name());
+    }
+
+    @Test
+    void chamadoAbertoComTecnicoPerdeSoOTecnicoEGravaApenasOEventoDeAtribuicao() {
+        dado(carlos, StatusChamado.ABERTO);
+        chamado.setAtribuidoEm(AGORA.minusSeconds(60));
+
+        service.desatribuirTecnico(ID, null, pAdmin);
+
+        assertThat(chamado.getTecnico()).isNull();
+        assertThat(chamado.getAtribuidoEm()).isNull();
+        assertThat(chamado.getStatus()).isEqualTo(StatusChamado.ABERTO);
+        HistoricoChamado e = eventoGravado();
+        assertThat(e.getTipoEvento()).isEqualTo(TipoEventoHistorico.ATRIBUICAO);
+        assertThat(e.getDescricao()).isEqualTo("Técnico responsável removido");
+    }
+
+    @Test
+    void motivoEmBrancoNaoEntraNaDescricao() {
+        dado(carlos, StatusChamado.ABERTO);
+
+        service.desatribuirTecnico(ID, new DesatribuirTecnicoRequest("   ", null), pAdmin);
+
+        assertThat(eventoGravado().getDescricao()).isEqualTo("Técnico responsável removido");
+    }
+
+    @Test
+    void somenteAdminRemoveOTecnico() {
+        dado(carlos, StatusChamado.EM_ATENDIMENTO);
+
+        assertThatThrownBy(() -> service.desatribuirTecnico(ID, null, pCarlos)).isInstanceOf(AcessoNegadoException.class)
+                .hasMessageContaining("administradores");
+        assertThatThrownBy(() -> service.desatribuirTecnico(ID, null, pAna)).isInstanceOf(AcessoNegadoException.class);
+
+        assertThat(chamado.getTecnico()).isSameAs(carlos);
+        nadaFoiGravado();
+    }
+
+    @Test
+    void tecnicoDaFilaTambemNaoRemoveTecnico() {
+        dado(null, StatusChamado.ABERTO);
+
+        assertThatThrownBy(() -> service.desatribuirTecnico(ID, null, pFernanda)).isInstanceOf(AcessoNegadoException.class);
+
+        nadaFoiGravado();
+    }
+
+    @Test
+    void chamadoSemTecnicoNaoPodeSerDesatribuido() {
+        dado(null, StatusChamado.ABERTO);
+
+        assertThatThrownBy(() -> service.desatribuirTecnico(ID, null, pAdmin))
+                .isInstanceOf(RegraNegocioException.class)
+                .hasMessage("O chamado não tem técnico atribuído.");
+
+        nadaFoiGravado();
+    }
+
+    @ParameterizedTest
+    @EnumSource(value = StatusChamado.class, names = {"RESOLVIDO", "FECHADO"})
+    void chamadoResolvidoOuFechadoMantemOResponsavel(StatusChamado status) {
+        dado(carlos, status);
+
+        assertThatThrownBy(() -> service.desatribuirTecnico(ID, null, pAdmin)).isInstanceOf(RegraNegocioException.class);
+
+        assertThat(chamado.getTecnico()).isSameAs(carlos);
+        assertThat(chamado.getStatus()).isEqualTo(status);
+        nadaFoiGravado();
+    }
+
+    @Test
+    void chamadoForaDaVisibilidadeResponde404NaDesatribuicao() {
+        dado(carlos, StatusChamado.EM_ATENDIMENTO);
+
+        assertThatThrownBy(() -> service.desatribuirTecnico(ID, null, pBruno))
+                .isInstanceOf(RecursoNaoEncontradoException.class);
+
+        nadaFoiGravado();
+    }
+
+    @Test
+    void ordemDasVerificacoesNaDesatribuicao() {
+        dado(null, StatusChamado.ABERTO);
+
+        // 403 antes de 409 e 422
+        assertThatThrownBy(() -> service.desatribuirTecnico(ID, new DesatribuirTecnicoRequest(null, 9L), pCarlos))
+                .isInstanceOf(AcessoNegadoException.class);
+        // 409 antes de 422
+        assertThatThrownBy(() -> service.desatribuirTecnico(ID, new DesatribuirTecnicoRequest(null, 9L), pAdmin))
+                .isInstanceOf(ConflitoException.class);
+        // versão correta: aparece a regra de negócio
+        assertThatThrownBy(() -> service.desatribuirTecnico(ID, new DesatribuirTecnicoRequest(null, 0L), pAdmin))
                 .isInstanceOf(RegraNegocioException.class);
 
         nadaFoiGravado();

@@ -50,6 +50,16 @@ public final class MaquinaEstadosChamado {
         return de != StatusChamado.RESOLVIDO && de != StatusChamado.FECHADO;
     }
 
+    /** O técnico só pode ser removido de chamados ainda não resolvidos; os resolvidos e fechados guardam o responsável. */
+    public static boolean podeDesatribuir(StatusChamado de) {
+        return de != StatusChamado.RESOLVIDO && de != StatusChamado.FECHADO;
+    }
+
+    /** Sem técnico o chamado volta para a fila: ABERTO (mesma regra da reabertura sem técnico). */
+    public static StatusChamado statusAposDesatribuicao() {
+        return StatusChamado.ABERTO;
+    }
+
     /** Só chamados ainda não resolvidos têm a prioridade (e, com ela, o SLA) alterada. */
     public static boolean podeAlterarPrioridade(StatusChamado de) {
         return de != StatusChamado.RESOLVIDO && de != StatusChamado.FECHADO;

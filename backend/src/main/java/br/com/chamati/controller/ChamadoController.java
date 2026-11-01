@@ -5,6 +5,7 @@ import br.com.chamati.dto.AlterarStatusRequest;
 import br.com.chamati.dto.AtribuirTecnicoRequest;
 import br.com.chamati.dto.ChamadoCriarRequest;
 import br.com.chamati.dto.ChamadoResponse;
+import br.com.chamati.dto.DesatribuirTecnicoRequest;
 import br.com.chamati.dto.ErroResponse;
 import br.com.chamati.dto.FecharChamadoRequest;
 import br.com.chamati.dto.PaginaResponse;
@@ -128,6 +129,21 @@ public class ChamadoController {
     public ChamadoResponse atribuirTecnico(@Parameter(description = "Identificador numérico do chamado (não é o protocolo).") @PathVariable Long id, @Valid @RequestBody AtribuirTecnicoRequest req,
                                            @Parameter(hidden = true) @AuthenticationPrincipal UsuarioPrincipal atual) {
         return gestao.atribuirTecnico(id, req, atual);
+    }
+
+    @PostMapping("/{id}/desatribuir")
+    @Operation(summary = "Remove o técnico responsável (ADMIN)",
+            description = "Somente ADMIN. O chamado não é excluído: o técnico e a data de atribuição são limpos e, se estava EM_ATENDIMENTO ou aguardando, ele volta para a fila com status ABERTO. A primeira resposta e os limites de SLA são preservados. Registra os eventos ATRIBUICAO (técnico removido) e, quando o status muda, ALTERACAO_STATUS; o motivo é visível ao solicitante. Chamados RESOLVIDO ou FECHADO mantêm o responsável. O corpo é opcional. Qualquer técnico pode assumir o chamado depois, pela atribuição.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Técnico removido; chamado sem responsável.", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ChamadoResponse.class))),
+            @ApiResponse(responseCode = "403", description = "Somente ADMIN.", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErroResponse.class))),
+            @ApiResponse(responseCode = "404", description = "Chamado não encontrado.", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErroResponse.class))),
+            @ApiResponse(responseCode = "409", description = "Versão informada desatualizada ou chamado alterado ao mesmo tempo por outra pessoa.", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErroResponse.class))),
+            @ApiResponse(responseCode = "422", description = "Chamado sem técnico atribuído, ou resolvido/fechado.", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErroResponse.class)))
+    })
+    public ChamadoResponse desatribuirTecnico(@Parameter(description = "Identificador numérico do chamado (não é o protocolo).") @PathVariable Long id, @Valid @RequestBody(required = false) DesatribuirTecnicoRequest req,
+                                              @Parameter(hidden = true) @AuthenticationPrincipal UsuarioPrincipal atual) {
+        return gestao.desatribuirTecnico(id, req, atual);
     }
 
     @PatchMapping("/{id}/status")

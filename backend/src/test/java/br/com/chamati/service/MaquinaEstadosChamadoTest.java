@@ -103,4 +103,13 @@ class MaquinaEstadosChamadoTest {
                     .isEqualTo(s != StatusChamado.RESOLVIDO && s != FECHADO);
         }
     }
+
+    @Test
+    void soChamadosResolvidosOuFechadosMantemOTecnico() {
+        for (StatusChamado s : StatusChamado.values()) {
+            assertThat(MaquinaEstadosChamado.podeDesatribuir(s)).as(s.name())
+                    .isEqualTo(s != StatusChamado.RESOLVIDO && s != FECHADO);
+        }
+        assertThat(MaquinaEstadosChamado.statusAposDesatribuicao()).isEqualTo(ABERTO);
+    }
 }
