@@ -1,5 +1,6 @@
 package br.com.chamati.controller;
 
+import br.com.chamati.dto.AlterarPrioridadeRequest;
 import br.com.chamati.dto.AlterarStatusRequest;
 import br.com.chamati.dto.AtribuirTecnicoRequest;
 import br.com.chamati.dto.ChamadoCriarRequest;
@@ -142,6 +143,21 @@ public class ChamadoController {
     public ChamadoResponse alterarStatus(@Parameter(description = "Identificador numérico do chamado (não é o protocolo).") @PathVariable Long id, @Valid @RequestBody AlterarStatusRequest req,
                                          @Parameter(hidden = true) @AuthenticationPrincipal UsuarioPrincipal atual) {
         return gestao.alterarStatus(id, req, atual);
+    }
+
+    @PatchMapping("/{id}/prioridade")
+    @Operation(summary = "Altera a prioridade",
+            description = "ADMIN ou o técnico responsável, enquanto o chamado não estiver RESOLVIDO nem FECHADO. Os limites de SLA são recalculados com os prazos da nova prioridade a partir da abertura do chamado (o prazo não reinicia) e a situação do SLA acompanha o novo limite. Registra o evento ALTERACAO_PRIORIDADE; o motivo é visível ao solicitante. Fora da visibilidade do usuário o chamado responde 404 (igual a inexistente).")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Prioridade alterada e SLA recalculado.", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ChamadoResponse.class))),
+            @ApiResponse(responseCode = "403", description = "Somente ADMIN ou o técnico responsável.", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErroResponse.class))),
+            @ApiResponse(responseCode = "404", description = "Chamado não encontrado.", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErroResponse.class))),
+            @ApiResponse(responseCode = "409", description = "Versão informada desatualizada ou chamado alterado ao mesmo tempo por outra pessoa.", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErroResponse.class))),
+            @ApiResponse(responseCode = "422", description = "Chamado resolvido ou fechado, prioridade igual à atual ou sem política de SLA ativa para a nova prioridade.", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErroResponse.class)))
+    })
+    public ChamadoResponse alterarPrioridade(@Parameter(description = "Identificador numérico do chamado (não é o protocolo).") @PathVariable Long id, @Valid @RequestBody AlterarPrioridadeRequest req,
+                                             @Parameter(hidden = true) @AuthenticationPrincipal UsuarioPrincipal atual) {
+        return gestao.alterarPrioridade(id, req, atual);
     }
 
     @PostMapping("/{id}/resolver")

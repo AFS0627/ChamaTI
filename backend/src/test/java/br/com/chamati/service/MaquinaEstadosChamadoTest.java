@@ -95,4 +95,12 @@ class MaquinaEstadosChamadoTest {
             assertThat(MaquinaEstadosChamado.podeComentar(s)).as(s.name()).isEqualTo(s != FECHADO);
         }
     }
+
+    @Test
+    void soChamadosResolvidosOuFechadosNaoTemAPrioridadeAlterada() {
+        for (StatusChamado s : StatusChamado.values()) {
+            assertThat(MaquinaEstadosChamado.podeAlterarPrioridade(s)).as(s.name())
+                    .isEqualTo(s != StatusChamado.RESOLVIDO && s != FECHADO);
+        }
+    }
 }

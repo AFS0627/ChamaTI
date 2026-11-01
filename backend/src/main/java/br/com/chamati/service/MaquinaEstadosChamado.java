@@ -50,6 +50,11 @@ public final class MaquinaEstadosChamado {
         return de != StatusChamado.RESOLVIDO && de != StatusChamado.FECHADO;
     }
 
+    /** Só chamados ainda não resolvidos têm a prioridade (e, com ela, o SLA) alterada. */
+    public static boolean podeAlterarPrioridade(StatusChamado de) {
+        return de != StatusChamado.RESOLVIDO && de != StatusChamado.FECHADO;
+    }
+
     /** Chamados fechados não recebem comentários: reabra o chamado antes. */
     public static boolean podeComentar(StatusChamado de) {
         return de != StatusChamado.FECHADO;

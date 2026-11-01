@@ -15,6 +15,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import br.com.chamati.Fixtures;
+import br.com.chamati.dto.AlterarPrioridadeRequest;
 import br.com.chamati.dto.AlterarStatusRequest;
 import br.com.chamati.dto.AtribuirTecnicoRequest;
 import br.com.chamati.dto.ChamadoResponse;
@@ -24,6 +25,7 @@ import br.com.chamati.entity.Chamado;
 import br.com.chamati.entity.HistoricoChamado;
 import br.com.chamati.entity.Usuario;
 import br.com.chamati.enums.Perfil;
+import br.com.chamati.enums.Prioridade;
 import br.com.chamati.enums.SituacaoSla;
 import br.com.chamati.enums.StatusChamado;
 import br.com.chamati.enums.TipoEventoHistorico;
@@ -36,6 +38,7 @@ import br.com.chamati.repository.ChamadoRepository;
 import br.com.chamati.repository.HistoricoChamadoRepository;
 import br.com.chamati.repository.UsuarioRepository;
 import br.com.chamati.security.UsuarioPrincipal;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
@@ -56,6 +59,7 @@ class ChamadoGestaoServiceTest {
     @Mock ChamadoRepository chamados;
     @Mock UsuarioRepository usuarios;
     @Mock HistoricoChamadoRepository historico;
+    @Mock SlaService sla;
 
     ChamadoGestaoService service;
 
@@ -75,7 +79,7 @@ class ChamadoGestaoServiceTest {
 
     @BeforeEach
     void preparar() {
-        service = new ChamadoGestaoService(chamados, usuarios, historico, new ChamadoMapper(), Fixtures.relogio());
+        service = new ChamadoGestaoService(chamados, usuarios, historico, sla, new ChamadoMapper(), Fixtures.relogio());
         lenient().when(chamados.findDetalheById(ID)).thenAnswer(inv -> Optional.ofNullable(chamado));
         for (Usuario u : new Usuario[]{admin, carlos, fernanda, ana, bruno}) {
             lenient().when(usuarios.getReferenceById(u.getId())).thenReturn(u);
@@ -594,5 +598,160 @@ class ChamadoGestaoServiceTest {
         // com permissão e versão correta, aparece a regra de negócio → 422
         assertThatThrownBy(() -> service.resolver(ID, new ResolverChamadoRequest("x", 0L), pCarlos))
                 .isInstanceOf(RegraNegocioException.class);
+    }
+
+    // =====================================================================
+    // alterar prioridade
+    // =====================================================================
+
+    private SlaService.Limites limitesApos(long primeiraRespostaMin, long resolucaoMin) {
+        Instant criadoEm = chamado.getCriadoEm();
+        return new SlaService.Limites(criadoEm.plus(Duration.ofMinutes(primeiraRespostaMin)),
+                criadoEm.plus(Duration.ofMinutes(resolucaoMin)));
+    }
+
+    @Test
+    void tecnicoResponsavelAlteraAPrioridadeERecalculaOSlaAPartirDaAbertura() {
+        dado(carlos, StatusChamado.EM_ATENDIMENTO);
+        Instant criadoEm = chamado.getCriadoEm();
+        SlaService.Limites limites = limitesApos(60, 480);
+        when(sla.calcularLimites(Prioridade.ALTA, criadoEm)).thenReturn(limites);
+
+        ChamadoResponse r = service.alterarPrioridade(ID,
+                new AlterarPrioridadeRequest(Prioridade.ALTA, "  Impacto maior  ", null), pCarlos);
+
+        assertThat(r.prioridade()).isEqualTo(Prioridade.ALTA);
+        assertThat(chamado.getPrioridade()).isEqualTo(Prioridade.ALTA);
+        assertThat(chamado.getSlaPrimeiraRespostaLimite()).isEqualTo(limites.primeiraResposta());
+        assertThat(chamado.getSlaResolucaoLimite()).isEqualTo(limites.resolucao());
+        assertThat(chamado.getCriadoEm()).isEqualTo(criadoEm);
+        assertThat(chamado.getStatus()).isEqualTo(StatusChamado.EM_ATENDIMENTO);
+        verify(chamados).saveAndFlush(chamado);
+        HistoricoChamado e = eventoGravado();
+        assertThat(e.getTipoEvento()).isEqualTo(TipoEventoHistorico.ALTERACAO_PRIORIDADE);
+        assertThat(e.getCampo()).isEqualTo("prioridade");
+        assertThat(e.getValorAnterior()).isEqualTo("MEDIA");
+        assertThat(e.getValorNovo()).isEqualTo("ALTA");
+        assertThat(e.getDescricao()).isEqualTo("Impacto maior");
+        assertThat(e.getAutor()).isSameAs(carlos);
+    }
+
+    @Test
+    void adminAlteraAPrioridadeDeChamadoSemTecnicoESemMotivo() {
+        dado(null, StatusChamado.ABERTO);
+        when(sla.calcularLimites(Prioridade.CRITICA, chamado.getCriadoEm())).thenReturn(limitesApos(15, 240));
+
+        ChamadoResponse r = service.alterarPrioridade(ID,
+                new AlterarPrioridadeRequest(Prioridade.CRITICA, "   ", null), pAdmin);
+
+        assertThat(r.prioridade()).isEqualTo(Prioridade.CRITICA);
+        assertThat(eventoGravado().getDescricao()).isNull();
+    }
+
+    @Test
+    void situacaoDoSlaAcompanhaOLimiteRecalculado() {
+        dado(carlos, StatusChamado.EM_ATENDIMENTO);
+        chamado.setSlaResolucaoLimite(chamado.getCriadoEm().plus(Duration.ofMinutes(1440)));
+        // aberto há 60 minutos; o novo prazo de resolução (10 min) já passou
+        when(sla.calcularLimites(Prioridade.CRITICA, chamado.getCriadoEm())).thenReturn(limitesApos(5, 10));
+
+        ChamadoResponse r = service.alterarPrioridade(ID,
+                new AlterarPrioridadeRequest(Prioridade.CRITICA, null, null), pAdmin);
+
+        assertThat(r.situacaoSlaResolucao()).isEqualTo(SituacaoSla.ATRASADO);
+    }
+
+    @Test
+    void prioridadeIgualAAtualEhRecusada() {
+        dado(carlos, StatusChamado.EM_ATENDIMENTO);
+
+        assertThatThrownBy(() -> service.alterarPrioridade(ID,
+                new AlterarPrioridadeRequest(Prioridade.MEDIA, null, null), pCarlos))
+                .isInstanceOf(RegraNegocioException.class)
+                .hasMessage("O chamado já tem a prioridade MEDIA.");
+
+        verifyNoInteractions(sla);
+        nadaFoiGravado();
+    }
+
+    @ParameterizedTest
+    @EnumSource(value = StatusChamado.class, names = {"RESOLVIDO", "FECHADO"})
+    void naoSeAlteraAPrioridadeDeChamadoResolvidoOuFechado(StatusChamado status) {
+        dado(carlos, status);
+
+        assertThatThrownBy(() -> service.alterarPrioridade(ID,
+                new AlterarPrioridadeRequest(Prioridade.ALTA, null, null), pAdmin))
+                .isInstanceOf(RegraNegocioException.class);
+
+        assertThat(chamado.getPrioridade()).isEqualTo(Prioridade.MEDIA);
+        verifyNoInteractions(sla);
+        nadaFoiGravado();
+    }
+
+    @Test
+    void semPoliticaDeSlaParaANovaPrioridadeNadaEhAlterado() {
+        dado(carlos, StatusChamado.EM_ATENDIMENTO);
+        Instant limitePrimeira = chamado.getCriadoEm().plusSeconds(100);
+        Instant limiteResolucao = chamado.getCriadoEm().plusSeconds(200);
+        chamado.setSlaPrimeiraRespostaLimite(limitePrimeira);
+        chamado.setSlaResolucaoLimite(limiteResolucao);
+        when(sla.calcularLimites(Prioridade.ALTA, chamado.getCriadoEm()))
+                .thenThrow(new RegraNegocioException("Não há política de SLA ativa para a prioridade ALTA."));
+
+        assertThatThrownBy(() -> service.alterarPrioridade(ID,
+                new AlterarPrioridadeRequest(Prioridade.ALTA, null, null), pCarlos))
+                .isInstanceOf(RegraNegocioException.class)
+                .hasMessageContaining("política de SLA");
+
+        assertThat(chamado.getPrioridade()).isEqualTo(Prioridade.MEDIA);
+        assertThat(chamado.getSlaPrimeiraRespostaLimite()).isEqualTo(limitePrimeira);
+        assertThat(chamado.getSlaResolucaoLimite()).isEqualTo(limiteResolucao);
+        nadaFoiGravado();
+    }
+
+    @Test
+    void soAdminOuOResponsavelAlteramAPrioridade() {
+        dado(null, StatusChamado.ABERTO);
+
+        assertThatThrownBy(() -> service.alterarPrioridade(ID,
+                new AlterarPrioridadeRequest(Prioridade.ALTA, null, null), pAna))
+                .isInstanceOf(AcessoNegadoException.class);
+        assertThatThrownBy(() -> service.alterarPrioridade(ID,
+                new AlterarPrioridadeRequest(Prioridade.ALTA, null, null), pFernanda))
+                .isInstanceOf(AcessoNegadoException.class);
+
+        verifyNoInteractions(sla);
+        nadaFoiGravado();
+    }
+
+    @Test
+    void chamadoForaDaVisibilidadeResponde404NaAlteracaoDePrioridade() {
+        dado(carlos, StatusChamado.EM_ATENDIMENTO);
+
+        assertThatThrownBy(() -> service.alterarPrioridade(ID,
+                new AlterarPrioridadeRequest(Prioridade.ALTA, null, null), pBruno))
+                .isInstanceOf(RecursoNaoEncontradoException.class);
+
+        nadaFoiGravado();
+    }
+
+    @Test
+    void ordemDasVerificacoesNaAlteracaoDePrioridade() {
+        dado(carlos, StatusChamado.FECHADO);
+
+        // 403 antes de 409 e 422
+        assertThatThrownBy(() -> service.alterarPrioridade(ID,
+                new AlterarPrioridadeRequest(Prioridade.ALTA, null, 9L), pAna))
+                .isInstanceOf(AcessoNegadoException.class);
+        // 409 antes de 422
+        assertThatThrownBy(() -> service.alterarPrioridade(ID,
+                new AlterarPrioridadeRequest(Prioridade.ALTA, null, 9L), pCarlos))
+                .isInstanceOf(ConflitoException.class);
+        // versão correta: aparece a regra de negócio
+        assertThatThrownBy(() -> service.alterarPrioridade(ID,
+                new AlterarPrioridadeRequest(Prioridade.ALTA, null, 0L), pCarlos))
+                .isInstanceOf(RegraNegocioException.class);
+
+        nadaFoiGravado();
     }
 }

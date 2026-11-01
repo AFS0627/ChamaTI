@@ -1,5 +1,6 @@
 package br.com.chamati.service;
 
+import br.com.chamati.dto.AlterarPrioridadeRequest;
 import br.com.chamati.dto.AlterarStatusRequest;
 import br.com.chamati.dto.AtribuirTecnicoRequest;
 import br.com.chamati.dto.ChamadoResponse;
@@ -9,6 +10,7 @@ import br.com.chamati.entity.Chamado;
 import br.com.chamati.entity.HistoricoChamado;
 import br.com.chamati.entity.Usuario;
 import br.com.chamati.enums.Perfil;
+import br.com.chamati.enums.Prioridade;
 import br.com.chamati.enums.StatusChamado;
 import br.com.chamati.enums.TipoEventoHistorico;
 import br.com.chamati.exception.AcessoNegadoException;
@@ -30,7 +32,7 @@ import org.springframework.transaction.annotation.Transactional;
  * Ordem das verificações: chamado visível (404) → permissão (403) → versão (409) → regras de negócio (422).
  *
  * Quem pode: atribuir — ADMIN (qualquer técnico ativo) ou TECNICO assumindo para si um chamado sem técnico;
- * alterar status e resolver — ADMIN ou o técnico responsável; fechar — ADMIN ou o solicitante do chamado;
+ * alterar status, alterar prioridade e resolver — ADMIN ou o técnico responsável; fechar — ADMIN ou o solicitante do chamado;
  * reabrir — ADMIN, o solicitante ou o técnico responsável.
  */
 @Service
@@ -40,14 +42,17 @@ public class ChamadoGestaoService {
     private final ChamadoRepository chamados;
     private final UsuarioRepository usuarios;
     private final HistoricoChamadoRepository historico;
+    private final SlaService sla;
     private final ChamadoMapper mapper;
     private final Clock clock;
 
     public ChamadoGestaoService(ChamadoRepository chamados, UsuarioRepository usuarios,
-                                HistoricoChamadoRepository historico, ChamadoMapper mapper, Clock clock) {
+                                HistoricoChamadoRepository historico, SlaService sla, ChamadoMapper mapper,
+                                Clock clock) {
         this.chamados = chamados;
         this.usuarios = usuarios;
         this.historico = historico;
+        this.sla = sla;
         this.mapper = mapper;
         this.clock = clock;
     }
@@ -109,6 +114,34 @@ public class ChamadoGestaoService {
         chamados.saveAndFlush(c);
         registrar(c, ator, TipoEventoHistorico.ALTERACAO_STATUS, "status", de.name(), para.name(),
                 vazioParaNulo(req.observacao()));
+        return mapper.paraResponse(c, agora);
+    }
+
+    /**
+     * Altera a prioridade de um chamado ainda não resolvido e recalcula os limites de SLA a partir de criado_em
+     * (o prazo não reinicia na mudança). Se não houver política de SLA ativa para a nova prioridade, nada é alterado.
+     */
+    public ChamadoResponse alterarPrioridade(Long id, AlterarPrioridadeRequest req, UsuarioPrincipal ator) {
+        Chamado c = carregar(id, ator);
+        exigirResponsavel(c, ator);
+        verificarVersao(c, req.versao());
+        if (!MaquinaEstadosChamado.podeAlterarPrioridade(c.getStatus())) {
+            throw new RegraNegocioException("Não é possível alterar a prioridade de um chamado " + c.getStatus() + ".");
+        }
+        Prioridade de = c.getPrioridade();
+        Prioridade para = req.prioridade();
+        if (de == para) {
+            throw new RegraNegocioException("O chamado já tem a prioridade " + para + ".");
+        }
+        SlaService.Limites limites = sla.calcularLimites(para, c.getCriadoEm());
+
+        Instant agora = agora();
+        c.setPrioridade(para);
+        c.setSlaPrimeiraRespostaLimite(limites.primeiraResposta());
+        c.setSlaResolucaoLimite(limites.resolucao());
+        chamados.saveAndFlush(c);
+        registrar(c, ator, TipoEventoHistorico.ALTERACAO_PRIORIDADE, "prioridade", de.name(), para.name(),
+                vazioParaNulo(req.motivo()));
         return mapper.paraResponse(c, agora);
     }
 
