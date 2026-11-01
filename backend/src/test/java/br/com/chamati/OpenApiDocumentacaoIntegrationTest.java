@@ -3,6 +3,7 @@ package br.com.chamati;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.request;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -365,7 +366,7 @@ class OpenApiDocumentacaoIntegrationTest extends IntegrationTestBase {
         Map<String, JsonNode> ops = operacoesDocumentadas(doc());
 
         assertThat(nomes(ops.get("GET /api/usuarios").get("responses"))).contains("200", "400", "401", "403");
-        assertThat(ops.get("GET /api/usuarios").at("/responses/403").has("content")).isFalse();
+        assertThat(ops.get("GET /api/usuarios").at("/responses/403").has("content")).isTrue();
         assertThat(nomes(ops.get("PUT /api/chamados/{id}/tecnico").get("responses")))
                 .contains("200", "400", "401", "403", "404", "409", "422");
         assertThat(nomes(ops.get("POST /api/chamados/{chamadoId}/comentarios").get("responses")))
@@ -377,7 +378,7 @@ class OpenApiDocumentacaoIntegrationTest extends IntegrationTestBase {
         assertThat(nomes(ops.get("GET /api/categorias/{id}").get("responses"))).contains("404").doesNotContain("403");
 
         for (Map.Entry<String, JsonNode> e : ops.entrySet()) {
-            for (String codigo : List.of("400", "404", "409", "422", "429")) {
+            for (String codigo : List.of("400", "401", "403", "404", "409", "422", "429")) {
                 JsonNode resposta = e.getValue().at("/responses/" + codigo);
                 if (!resposta.isMissingNode()) {
                     assertThat(resposta.at("/content/application~1json/schema/$ref").asText())
@@ -401,12 +402,22 @@ class OpenApiDocumentacaoIntegrationTest extends IntegrationTestBase {
     }
 
     @Test
-    void respostaSemCorpoDocumentadaParaPerfilSemPermissaoEParaTokenAusente() throws Exception {
+    void respostas401E403TemOMesmoModeloDeErroDocumentado() throws Exception {
         mvc.perform(get("/api/usuarios").with(UsuarioControllerIntegrationTest.como(Perfil.SOLICITANTE, 4L)))
                 .andExpect(status().isForbidden())
-                .andExpect(result -> assertThat(result.getResponse().getContentAsString()).isEmpty());
+                .andExpect(jsonPath("$.status").value(403))
+                .andExpect(jsonPath("$.erro").value("Forbidden"))
+                .andExpect(jsonPath("$.mensagem").value("Seu perfil não tem permissão para esta operação."))
+                .andExpect(jsonPath("$.timestamp").exists());
         mvc.perform(get("/api/usuarios"))
                 .andExpect(status().isUnauthorized())
-                .andExpect(result -> assertThat(result.getResponse().getContentAsString()).isEmpty());
+                .andExpect(header().string("WWW-Authenticate", "Bearer"))
+                .andExpect(jsonPath("$.status").value(401))
+                .andExpect(jsonPath("$.erro").value("Unauthorized"))
+                .andExpect(jsonPath("$.mensagem").value("Token ausente, inválido ou expirado."));
+        mvc.perform(get("/api/usuarios").header("Authorization", "Bearer token.invalido.qualquer"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.status").value(401))
+                .andExpect(jsonPath("$.mensagem").value("Token ausente, inválido ou expirado."));
     }
 }

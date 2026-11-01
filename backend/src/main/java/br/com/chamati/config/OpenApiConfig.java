@@ -41,8 +41,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 
                         **Perfis:** `ADMIN`, `TECNICO` e `SOLICITANTE`. Cada operação indica quem pode executá-la.
 
-                        **Erros:** respostas de erro de negócio e validação seguem o modelo `ErroResponse`. \
-                        As respostas 401 e as 403 de acesso por perfil (restrição de ADMIN) não têm corpo.
+                        **Erros:** todas as respostas de erro (400, 401, 403, 404, 409, 422 e 429) seguem o modelo `ErroResponse`.
                         """),
         security = @SecurityRequirement(name = OpenApiConfig.ESQUEMA_BEARER))
 @SecurityScheme(
@@ -69,12 +68,12 @@ public class OpenApiConfig {
                 adicionar(respostas, "400", "Requisição inválida: corpo, parâmetro ou identificador com formato ou valor incorreto.", true);
             }
             if (!AnnotatedElementUtils.hasAnnotation(metodo, SecurityRequirements.class)) {
-                adicionar(respostas, "401", "Token ausente, inválido ou expirado (sem corpo).", false);
+                adicionar(respostas, "401", "Token ausente, inválido ou expirado.", true);
             }
             boolean restritoAAdmin = AnnotatedElementUtils.hasAnnotation(metodo, PreAuthorize.class)
                     || AnnotatedElementUtils.hasAnnotation(controller, PreAuthorize.class);
             if (restritoAAdmin) {
-                adicionar(respostas, "403", "Perfil sem permissão: operação restrita a ADMIN (sem corpo).", false);
+                adicionar(respostas, "403", "Perfil sem permissão: operação restrita a ADMIN.", true);
             }
             return operation;
         };

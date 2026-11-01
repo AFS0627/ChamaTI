@@ -44,6 +44,10 @@ app:
       issuer: chamati
       access-ttl: PT15M     # vida curta do access token
       refresh-ttl: P7D      # sessão máxima sem novo login
+  # Origens do frontend autorizadas a chamar a API (CORS), separadas por vírgula.
+  # Vazio = nenhuma origem externa. Ex.: CORS_ALLOWED_ORIGINS=https://chamati.exemplo.com.br
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:}
 
 # Documentação OpenAPI (springdoc): JSON em /v3/api-docs e interface em /swagger-ui.html.
 # Desabilitada no perfil prod (application-prod.yml).

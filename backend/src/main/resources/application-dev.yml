@@ -9,6 +9,11 @@ spring:
     # inclui os dados de demonstração (V100): 6 usuários, 12 chamados etc.
     locations: classpath:db/migration,classpath:db/seed-dev
 
+app:
+  cors:
+    # servidores de desenvolvimento comuns (Vite e Create React App/Next)
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173,http://localhost:3000}
+
 logging:
   level:
     br.com.chamati: DEBUG
