@@ -59,7 +59,7 @@ public class ChamadoConsultaService {
         return mapper.paraResponse(chamado, clock.instant());
     }
 
-    private static ChamadoFiltro restringir(ChamadoFiltro filtro, UsuarioPrincipal atual) {
+    static ChamadoFiltro restringir(ChamadoFiltro filtro, UsuarioPrincipal atual) {
         return switch (atual.perfil()) {
             case ADMIN -> filtro;
             case TECNICO -> filtro.comEscopoTecnico(atual.id());

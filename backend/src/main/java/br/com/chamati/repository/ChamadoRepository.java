@@ -2,9 +2,13 @@ package br.com.chamati.repository;
 
 import br.com.chamati.entity.Chamado;
 import br.com.chamati.repository.consulta.ChamadoFiltro;
+import br.com.chamati.repository.consulta.ContagemCategoria;
 import br.com.chamati.repository.consulta.ChamadoResumo;
 import br.com.chamati.repository.consulta.ContagemStatus;
+import br.com.chamati.repository.consulta.ContagemStatusPrioridade;
+import br.com.chamati.repository.consulta.ResumoOperacional;
 import java.time.Instant;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.domain.Page;
@@ -87,4 +91,48 @@ public interface ChamadoRepository extends JpaRepository<Chamado, Long> {
             """)
     List<ContagemStatus> contarPorStatus(@Param("solicitanteId") Long solicitanteId,
                                          @Param("tecnicoId") Long tecnicoId);
+
+    // ---- painel (dashboard): mesma regra de visibilidade da listagem ----
+
+    String VISIVEL = """
+            where (:solicitanteId is null or sol.id = :solicitanteId)
+              and (:escopoTecnicoId is null or tec.id = :escopoTecnicoId or tec.id is null
+                     or sol.id = :escopoTecnicoId)
+            """;
+
+    /** Grade status x prioridade; totais por status e por prioridade saem dela. */
+    @Query("select new br.com.chamati.repository.consulta.ContagemStatusPrioridade(c.status, c.prioridade, count(c)) "
+            + "from Chamado c join c.solicitante sol left join c.tecnico tec " + VISIVEL
+            + " group by c.status, c.prioridade")
+    List<ContagemStatusPrioridade> contarPorStatusEPrioridade(@Param("solicitanteId") Long solicitanteId,
+                                                              @Param("escopoTecnicoId") Long escopoTecnicoId);
+
+    @Query("""
+            select new br.com.chamati.repository.consulta.ResumoOperacional(
+                count(case when c.status not in (:finais) and c.tecnico is null then 1 end),
+                count(case when c.status not in (:finais) and c.slaResolucaoLimite is not null
+                           and c.slaResolucaoLimite < :agora then 1 end),
+                count(case when c.status not in (:finais) and c.primeiraRespostaEm is null
+                           and c.slaPrimeiraRespostaLimite is not null
+                           and c.slaPrimeiraRespostaLimite < :agora then 1 end),
+                count(case when c.criadoEm >= :desde then 1 end),
+                count(case when c.resolvidoEm is not null and c.resolvidoEm >= :desde then 1 end),
+                count(case when c.status not in (:finais) and tec.id = :usuarioId then 1 end))
+            from Chamado c join c.solicitante sol left join c.tecnico tec
+            """ + VISIVEL)
+    ResumoOperacional contarOperacional(@Param("solicitanteId") Long solicitanteId,
+                                        @Param("escopoTecnicoId") Long escopoTecnicoId,
+                                        @Param("usuarioId") Long usuarioId,
+                                        @Param("finais") Collection<br.com.chamati.enums.StatusChamado> finais,
+                                        @Param("agora") Instant agora,
+                                        @Param("desde") Instant desde);
+
+    /** Categorias com mais chamados em aberto; o limite vem do Pageable. */
+    @Query("select new br.com.chamati.repository.consulta.ContagemCategoria(cat.id, cat.nome, count(c)) "
+            + "from Chamado c join c.categoria cat join c.solicitante sol left join c.tecnico tec " + VISIVEL
+            + " and c.status not in (:finais) group by cat.id, cat.nome order by count(c) desc, cat.nome")
+    List<ContagemCategoria> contarEmAbertoPorCategoria(@Param("solicitanteId") Long solicitanteId,
+                                                       @Param("escopoTecnicoId") Long escopoTecnicoId,
+                                                       @Param("finais") Collection<br.com.chamati.enums.StatusChamado> finais,
+                                                       Pageable limite);
 }
