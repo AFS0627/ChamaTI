@@ -6,11 +6,13 @@ import br.com.chamati.dto.UsuarioSessaoResponse;
 import br.com.chamati.entity.RefreshToken;
 import br.com.chamati.entity.Usuario;
 import br.com.chamati.exception.AutenticacaoException;
+import br.com.chamati.exception.RegraNegocioException;
 import br.com.chamati.repository.RefreshTokenRepository;
 import br.com.chamati.repository.UsuarioRepository;
 import br.com.chamati.security.JwtService;
 import br.com.chamati.security.TentativasLogin;
 import br.com.chamati.security.TokenHash;
+import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
 import java.time.Clock;
 import java.time.Instant;
@@ -31,6 +33,8 @@ public class AuthService {
     private static final String CREDENCIAIS_INVALIDAS = "Credenciais inválidas.";
     private static final String SESSAO_INVALIDA = "Sessão inválida ou expirada.";
     private static final SecureRandom RANDOM = new SecureRandom();
+    /** O BCrypt só considera os primeiros 72 bytes da senha. */
+    private static final int LIMITE_BCRYPT_BYTES = 72;
 
     private final UsuarioRepository usuarios;
     private final RefreshTokenRepository refreshTokens;
@@ -100,6 +104,42 @@ public class AuthService {
     public void encerrarSessao(String refreshBruto) {
         refreshTokens.findByTokenHash(TokenHash.sha256Hex(refreshBruto))
                 .ifPresent(t -> refreshTokens.revogarSeAtivo(t.getId(), clock.instant()));
+    }
+
+    /**
+     * Troca a senha do usuário autenticado: confere a senha atual (com limitador de tentativas por usuário), grava o novo
+     * hash BCrypt, revoga todos os refresh tokens (encerra as demais sessões) e devolve um novo par de tokens para que a
+     * sessão atual continue aberta. Access tokens já emitidos valem até expirar.
+     */
+    @Transactional
+    public TokenResponse trocarSenha(Long usuarioId, String senhaAtual, String novaSenha) {
+        String chave = "senha|" + usuarioId;
+        tentativas.verificar(chave);
+
+        Usuario usuario = usuarios.findById(usuarioId)
+                .filter(Usuario::isAtivo)
+                .orElseThrow(() -> new AutenticacaoException(SESSAO_INVALIDA));
+        if (excedeLimiteBcrypt(senhaAtual) || !passwordEncoder.matches(senhaAtual, usuario.getSenhaHash())) {
+            tentativas.registrarFalha(chave);
+            throw new RegraNegocioException("Senha atual incorreta.");
+        }
+        tentativas.limpar(chave);
+
+        if (excedeLimiteBcrypt(novaSenha)) {
+            throw new RegraNegocioException("A nova senha não pode ter mais de " + LIMITE_BCRYPT_BYTES
+                    + " bytes (caracteres acentuados ocupam mais de um byte).");
+        }
+        if (passwordEncoder.matches(novaSenha, usuario.getSenhaHash())) {
+            throw new RegraNegocioException("A nova senha deve ser diferente da atual.");
+        }
+
+        usuario.setSenhaHash(passwordEncoder.encode(novaSenha));
+        refreshTokens.revogarTodosDoUsuario(usuario.getId(), clock.instant());
+        return emitir(usuario);
+    }
+
+    private static boolean excedeLimiteBcrypt(String senha) {
+        return senha.getBytes(StandardCharsets.UTF_8).length > LIMITE_BCRYPT_BYTES;
     }
 
     @Transactional

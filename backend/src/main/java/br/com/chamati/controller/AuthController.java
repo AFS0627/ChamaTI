@@ -4,6 +4,7 @@ import br.com.chamati.dto.ErroResponse;
 import br.com.chamati.dto.LoginRequest;
 import br.com.chamati.dto.RefreshRequest;
 import br.com.chamati.dto.TokenResponse;
+import br.com.chamati.dto.TrocarSenhaRequest;
 import br.com.chamati.dto.UsuarioSessaoResponse;
 import br.com.chamati.security.UsuarioPrincipal;
 import br.com.chamati.service.AuthService;
@@ -22,6 +23,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -83,6 +85,19 @@ public class AuthController {
     public ResponseEntity<Void> logoutTodos(@Parameter(hidden = true) @AuthenticationPrincipal UsuarioPrincipal atual) {
         service.encerrarTodasSessoes(atual.id());
         return ResponseEntity.noContent().build();
+    }
+
+    @PutMapping("/senha")
+    @Operation(summary = "Troca a senha do usuário autenticado",
+            description = "Exige a senha atual. A nova senha tem de 8 a 72 caracteres (até 72 bytes), com ao menos uma letra e um número, e deve ser diferente da atual. Todas as sessões (refresh tokens) são encerradas e a resposta traz um novo par de tokens para manter esta sessão aberta; access tokens já emitidos, inclusive de outros dispositivos, valem até expirar (15 minutos). Após 5 senhas atuais incorretas em 15 minutos a operação responde 429.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Senha alterada; novo par de tokens para a sessão atual.", content = @Content(mediaType = "application/json", schema = @Schema(implementation = TokenResponse.class))),
+            @ApiResponse(responseCode = "422", description = "Senha atual incorreta, nova senha igual à atual ou acima de 72 bytes.", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErroResponse.class))),
+            @ApiResponse(responseCode = "429", description = "Muitas tentativas com a senha atual incorreta; aguarde o tempo indicado em Retry-After.", headers = @Header(name = "Retry-After", description = "Segundos até uma nova tentativa.", schema = @Schema(type = "integer")), content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErroResponse.class)))
+    })
+    public TokenResponse trocarSenha(@Valid @RequestBody TrocarSenhaRequest req,
+                                    @Parameter(hidden = true) @AuthenticationPrincipal UsuarioPrincipal atual) {
+        return service.trocarSenha(atual.id(), req.senhaAtual(), req.novaSenha());
     }
 
     @GetMapping("/me")

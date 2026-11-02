@@ -48,6 +48,12 @@ app:
   # Vazio = nenhuma origem externa. Ex.: CORS_ALLOWED_ORIGINS=https://chamati.exemplo.com.br
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:}
+  # Primeiro ADMIN: criado na subida apenas se não houver administrador ativo e se e-mail e senha estiverem definidos.
+  # Use uma senha provisória e troque-a no primeiro acesso; remova as variáveis depois.
+  admin-inicial:
+    nome: ${ADMIN_INICIAL_NOME:Administrador}
+    email: ${ADMIN_INICIAL_EMAIL:}
+    senha: ${ADMIN_INICIAL_SENHA:}
 
 # Documentação OpenAPI (springdoc): JSON em /v3/api-docs e interface em /swagger-ui.html.
 # Desabilitada no perfil prod (application-prod.yml).

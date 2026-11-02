@@ -10,6 +10,7 @@ import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -22,6 +23,7 @@ import br.com.chamati.dto.UsuarioSessaoResponse;
 import br.com.chamati.entity.RefreshToken;
 import br.com.chamati.entity.Usuario;
 import br.com.chamati.exception.AutenticacaoException;
+import br.com.chamati.exception.RegraNegocioException;
 import br.com.chamati.exception.TentativasExcedidasException;
 import br.com.chamati.repository.RefreshTokenRepository;
 import br.com.chamati.repository.UsuarioRepository;
@@ -35,6 +37,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
+import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -352,5 +355,125 @@ class AuthServiceTest {
 
         assertThatThrownBy(() -> service.sessaoAtual(4L)).isInstanceOf(AutenticacaoException.class);
         assertThatThrownBy(() -> service.sessaoAtual(99L)).isInstanceOf(AutenticacaoException.class);
+    }
+
+    // ---------- troca de senha ----------
+
+    private static final String NOVA = "NovaSenha9";
+    private static final String HASH_NOVO = "$2a$04$hash-novo";
+
+    @Test
+    void trocarSenhaGravaONovoHashRevogaTodasAsSessoesEEmiteNovoPar() {
+        when(usuarios.findById(4L)).thenReturn(Optional.of(ana));
+        when(encoder.matches("Senha@123", HASH_ANA)).thenReturn(true);
+        when(encoder.matches(NOVA, HASH_ANA)).thenReturn(false);
+        when(encoder.encode(NOVA)).thenReturn(HASH_NOVO);
+        prepararEmissao();
+
+        TokenResponse resposta = service.trocarSenha(4L, "Senha@123", NOVA);
+
+        assertThat(ana.getSenhaHash()).isEqualTo(HASH_NOVO).isNotEqualTo(NOVA);
+        assertThat(resposta.accessToken()).isEqualTo(ACCESS_TOKEN);
+        assertThat(resposta.refreshToken()).hasSize(43);
+        InOrder ordem = inOrder(refreshTokens);
+        ordem.verify(refreshTokens).revogarTodosDoUsuario(4L, AGORA);
+        ordem.verify(refreshTokens).save(any(RefreshToken.class));
+        verify(tentativas).verificar("senha|4");
+        verify(tentativas).limpar("senha|4");
+        verify(tentativas, never()).registrarFalha(anyString());
+    }
+
+    @Test
+    void senhaAtualIncorretaNaoAlteraNadaEContaComoFalha() {
+        when(usuarios.findById(4L)).thenReturn(Optional.of(ana));
+        when(encoder.matches("errada", HASH_ANA)).thenReturn(false);
+
+        assertThatThrownBy(() -> service.trocarSenha(4L, "errada", NOVA))
+                .isInstanceOf(RegraNegocioException.class)
+                .hasMessage("Senha atual incorreta.");
+
+        assertThat(ana.getSenhaHash()).isEqualTo(HASH_ANA);
+        verify(tentativas).registrarFalha("senha|4");
+        verify(tentativas, never()).limpar(anyString());
+        verify(encoder, never()).encode(NOVA);
+        verify(refreshTokens, never()).revogarTodosDoUsuario(anyLong(), any());
+        verifyNoInteractions(jwtService);
+    }
+
+    @Test
+    void senhaAtualAcimaDeSetentaEDoisBytesEIncorretaSemConsultarOEncoder() {
+        when(usuarios.findById(4L)).thenReturn(Optional.of(ana));
+
+        assertThatThrownBy(() -> service.trocarSenha(4L, "é".repeat(40), NOVA))
+                .isInstanceOf(RegraNegocioException.class)
+                .hasMessage("Senha atual incorreta.");
+
+        verify(encoder, never()).matches(anyString(), anyString());
+        verify(tentativas).registrarFalha("senha|4");
+    }
+
+    @Test
+    void novaSenhaIgualAAtualEhRecusadaSemRevogarSessoes() {
+        when(usuarios.findById(4L)).thenReturn(Optional.of(ana));
+        when(encoder.matches("Senha@123", HASH_ANA)).thenReturn(true);
+
+        assertThatThrownBy(() -> service.trocarSenha(4L, "Senha@123", "Senha@123"))
+                .isInstanceOf(RegraNegocioException.class)
+                .hasMessage("A nova senha deve ser diferente da atual.");
+
+        assertThat(ana.getSenhaHash()).isEqualTo(HASH_ANA);
+        verify(refreshTokens, never()).revogarTodosDoUsuario(anyLong(), any());
+        verify(refreshTokens, never()).save(any());
+    }
+
+    @Test
+    void novaSenhaAcimaDeSetentaEDoisBytesEhRecusada() {
+        when(usuarios.findById(4L)).thenReturn(Optional.of(ana));
+        when(encoder.matches("Senha@123", HASH_ANA)).thenReturn(true);
+
+        assertThatThrownBy(() -> service.trocarSenha(4L, "Senha@123", "é".repeat(40) + "1"))
+                .isInstanceOf(RegraNegocioException.class)
+                .hasMessageContaining("72 bytes");
+
+        assertThat(ana.getSenhaHash()).isEqualTo(HASH_ANA);
+        verify(encoder, never()).encode("é".repeat(40) + "1");
+    }
+
+    @Test
+    void trocaBloqueadaPorExcessoDeTentativasNaoConsultaOBanco() {
+        doThrow(new TentativasExcedidasException(300)).when(tentativas).verificar("senha|4");
+
+        assertThatThrownBy(() -> service.trocarSenha(4L, "Senha@123", NOVA))
+                .isInstanceOf(TentativasExcedidasException.class);
+
+        verifyNoInteractions(usuarios, refreshTokens);
+    }
+
+    @Test
+    void aposCincoSenhasAtuaisIncorretasATrocaFicaBloqueadaMesmoComASenhaCerta() {
+        AuthService comLimitadorReal = new AuthService(usuarios, refreshTokens, encoder, jwtService, props,
+                new TentativasLogin(relogio), relogio);
+        when(usuarios.findById(4L)).thenReturn(Optional.of(ana));
+
+        for (int i = 0; i < 5; i++) {
+            assertThatThrownBy(() -> comLimitadorReal.trocarSenha(4L, "errada", NOVA))
+                    .isInstanceOf(RegraNegocioException.class);
+        }
+
+        assertThatThrownBy(() -> comLimitadorReal.trocarSenha(4L, "Senha@123", NOVA))
+                .isInstanceOf(TentativasExcedidasException.class);
+        verify(encoder, never()).matches(eq("Senha@123"), anyString());
+    }
+
+    @Test
+    void usuarioInativoOuInexistenteNaoTrocaASenha() {
+        ana.setAtivo(false);
+        when(usuarios.findById(4L)).thenReturn(Optional.of(ana));
+        when(usuarios.findById(99L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.trocarSenha(4L, "Senha@123", NOVA)).isInstanceOf(AutenticacaoException.class);
+        assertThatThrownBy(() -> service.trocarSenha(99L, "Senha@123", NOVA)).isInstanceOf(AutenticacaoException.class);
+
+        verify(encoder, never()).matches(anyString(), anyString());
     }
 }

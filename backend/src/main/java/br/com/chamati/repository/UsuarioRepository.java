@@ -18,6 +18,9 @@ public interface UsuarioRepository extends JpaRepository<Usuario, Long> {
 
     boolean existsByEmail(String email);
 
+    /** Há ao menos um usuário ativo com o perfil informado. */
+    boolean existsByPerfilAndAtivoTrue(Perfil perfil);
+
     boolean existsByEmailAndIdNot(String email, Long id);
 
     /** Valida atribuição: usuário ativo com o perfil exigido (TECNICO). */
