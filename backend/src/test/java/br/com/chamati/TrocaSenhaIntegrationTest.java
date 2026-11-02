@@ -18,6 +18,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.test.web.servlet.request.RequestPostProcessor;
 
 /**
  * PUT /api/auth/senha com tokens reais. Cada teste usa um usuário diferente porque o limitador de tentativas é
@@ -38,7 +39,12 @@ class TrocaSenhaIntegrationTest extends IntegrationTestBase {
     @Autowired PasswordEncoder passwordEncoder;
 
     private ResultActions login(String email, String senha) throws Exception {
-        return mvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON)
+        return mvc.perform(post("/api/auth/login")
+                .with(request -> {
+                    request.setRemoteAddr("192.0.2.10");
+                    return request;
+                })
+                .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"email\":\"" + email + "\",\"senha\":\"" + senha + "\"}"));
     }
 
