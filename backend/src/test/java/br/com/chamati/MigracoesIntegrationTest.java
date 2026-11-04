@@ -7,7 +7,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 /**
- * Aplica V1, V2 e V100 e confirma que o Hibernate valida o esquema (ddl-auto=validate),
+ * Aplica V1, V2, V3 e V100 e confirma que o Hibernate valida o esquema (ddl-auto=validate),
  * o que também valida o mapeamento de todas as entidades.
  */
 class MigracoesIntegrationTest extends IntegrationTestBase {
@@ -22,7 +22,7 @@ class MigracoesIntegrationTest extends IntegrationTestBase {
         Integer chamados = jdbc.queryForObject("SELECT COUNT(*) FROM chamados", Integer.class);
         Integer categorias = jdbc.queryForObject("SELECT COUNT(*) FROM categorias", Integer.class);
 
-        assertThat(migracoes).isEqualTo(3);
+        assertThat(migracoes).isEqualTo(4);
         assertThat(categorias).isEqualTo(8);
         assertThat(chamados).isEqualTo(12);
     }

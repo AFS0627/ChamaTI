@@ -13,6 +13,8 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
+import org.springframework.web.multipart.support.MissingServletRequestPartException;
 
 /** Mensagens de erro nunca incluem valores enviados (ex.: senhas) nem detalhes internos. */
 @RestControllerAdvice
@@ -58,6 +60,16 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
     ResponseEntity<ErroResponse> tipoInvalido(MethodArgumentTypeMismatchException e) {
         return resposta(HttpStatus.BAD_REQUEST, "Valor inválido para o parâmetro '" + e.getName() + "'.");
+    }
+
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    ResponseEntity<ErroResponse> arquivoGrande(MaxUploadSizeExceededException e) {
+        return resposta(HttpStatus.PAYLOAD_TOO_LARGE, "O arquivo excede o tamanho máximo de 5 MB.");
+    }
+
+    @ExceptionHandler(MissingServletRequestPartException.class)
+    ResponseEntity<ErroResponse> parteAusente(MissingServletRequestPartException e) {
+        return resposta(HttpStatus.BAD_REQUEST, "Parte obrigatória ausente: '" + e.getRequestPartName() + "'.");
     }
 
     @ExceptionHandler(HttpMessageNotReadableException.class)

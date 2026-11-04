@@ -37,6 +37,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.ValueConstants;
 import org.springframework.web.method.HandlerMethod;
 import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping;
@@ -60,8 +61,12 @@ class OpenApiDocumentacaoIntegrationTest extends IntegrationTestBase {
             "POST /api/categorias/{categoriaId}/subcategorias", "201",
             "POST /api/chamados", "201",
             "POST /api/chamados/{chamadoId}/comentarios", "201",
+            "POST /api/chamados/{chamadoId}/anexos", "201",
             "POST /api/auth/logout", "204",
             "POST /api/auth/logout-todos", "204");
+
+    /** Operações cujo sucesso devolve um arquivo e não JSON. */
+    private static final Set<String> DOWNLOADS = Set.of("GET /api/chamados/{chamadoId}/anexos/{anexoId}");
 
     @Autowired MockMvc mvc;
     @Autowired ObjectMapper json;
@@ -229,10 +234,13 @@ class OpenApiDocumentacaoIntegrationTest extends IntegrationTestBase {
                     .isEqualTo(parametrosEsperados(e.getValue()));
 
             MethodParameter corpo = Arrays.stream(e.getValue().getMethodParameters())
-                    .filter(mp -> mp.hasParameterAnnotation(RequestBody.class)).findFirst().orElse(null);
+                    .filter(mp -> mp.hasParameterAnnotation(RequestBody.class) || mp.hasParameterAnnotation(RequestPart.class))
+                    .findFirst().orElse(null);
             assertThat(operacao.has("requestBody")).as("corpo de %s", e.getKey()).isEqualTo(corpo != null);
             if (corpo != null) {
-                boolean obrigatorio = corpo.getParameterAnnotation(RequestBody.class).required();
+                RequestBody corpoJson = corpo.getParameterAnnotation(RequestBody.class);
+                boolean obrigatorio = corpoJson != null ? corpoJson.required()
+                        : corpo.getParameterAnnotation(RequestPart.class).required();
                 assertThat(operacao.at("/requestBody/required").asBoolean(false))
                         .as("corpo obrigatório em %s", e.getKey()).isEqualTo(obrigatorio);
             }
@@ -251,6 +259,9 @@ class OpenApiDocumentacaoIntegrationTest extends IntegrationTestBase {
             JsonNode resposta = e.getValue().at("/responses/" + esperado);
             if (esperado.equals("204")) {
                 assertThat(resposta.has("content")).as("%s não tem corpo", e.getKey()).isFalse();
+            } else if (DOWNLOADS.contains(e.getKey())) {
+                assertThat(resposta.at("/content/application~1octet-stream/schema/format").asText())
+                        .as("download de %s", e.getKey()).isEqualTo("binary");
             } else {
                 assertThat(resposta.at("/content/application~1json/schema").isMissingNode())
                         .as("schema do sucesso de %s", e.getKey()).isFalse();
@@ -371,6 +382,8 @@ class OpenApiDocumentacaoIntegrationTest extends IntegrationTestBase {
                 .contains("200", "400", "401", "403", "404", "409", "422");
         assertThat(nomes(ops.get("POST /api/chamados/{chamadoId}/comentarios").get("responses")))
                 .contains("201", "400", "401", "403", "404", "409", "422");
+        assertThat(nomes(ops.get("POST /api/chamados/{chamadoId}/anexos").get("responses")))
+                .contains("201", "400", "401", "404", "413", "422");
         assertThat(nomes(ops.get("POST /api/auth/login").get("responses"))).contains("200", "400", "401", "429")
                 .doesNotContain("403");
         assertThat(ops.get("POST /api/auth/login").at("/responses/429/headers").has("Retry-After")).isTrue();
@@ -378,7 +391,7 @@ class OpenApiDocumentacaoIntegrationTest extends IntegrationTestBase {
         assertThat(nomes(ops.get("GET /api/categorias/{id}").get("responses"))).contains("404").doesNotContain("403");
 
         for (Map.Entry<String, JsonNode> e : ops.entrySet()) {
-            for (String codigo : List.of("400", "401", "403", "404", "409", "422", "429")) {
+            for (String codigo : List.of("400", "401", "403", "404", "409", "413", "422", "429")) {
                 JsonNode resposta = e.getValue().at("/responses/" + codigo);
                 if (!resposta.isMissingNode()) {
                     assertThat(resposta.at("/content/application~1json/schema/$ref").asText())

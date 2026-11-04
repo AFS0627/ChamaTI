@@ -18,6 +18,12 @@ spring:
       minimum-idle: 2
       connection-timeout: 20000
 
+  # Anexos: até 5 MB por arquivo (o limite do service é o mesmo).
+  servlet:
+    multipart:
+      max-file-size: 5MB
+      max-request-size: 6MB
+
   # Hibernate apenas valida: o esquema pertence ao Flyway.
   jpa:
     open-in-view: false
