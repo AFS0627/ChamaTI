@@ -62,19 +62,19 @@ public class GlobalExceptionHandler {
         return resposta(HttpStatus.BAD_REQUEST, "Valor inválido para o parâmetro '" + e.getName() + "'.");
     }
 
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    ResponseEntity<ErroResponse> corpoIlegivel(HttpMessageNotReadableException e) {
+        return resposta(HttpStatus.BAD_REQUEST, "Corpo da requisição inválido.");
+    }
+
     @ExceptionHandler(MaxUploadSizeExceededException.class)
     ResponseEntity<ErroResponse> arquivoGrande(MaxUploadSizeExceededException e) {
-        return resposta(HttpStatus.PAYLOAD_TOO_LARGE, "O arquivo excede o tamanho máximo de 5 MB.");
+        return resposta(HttpStatus.valueOf(413), "O arquivo excede o tamanho máximo permitido.");
     }
 
     @ExceptionHandler(MissingServletRequestPartException.class)
     ResponseEntity<ErroResponse> parteAusente(MissingServletRequestPartException e) {
-        return resposta(HttpStatus.BAD_REQUEST, "Parte obrigatória ausente: '" + e.getRequestPartName() + "'.");
-    }
-
-    @ExceptionHandler(HttpMessageNotReadableException.class)
-    ResponseEntity<ErroResponse> corpoIlegivel(HttpMessageNotReadableException e) {
-        return resposta(HttpStatus.BAD_REQUEST, "Corpo da requisição inválido.");
+        return resposta(HttpStatus.BAD_REQUEST, "Envie o arquivo no campo '" + e.getRequestPartName() + "'.");
     }
 
     /** Última defesa contra corrida em restrições únicas (ex.: e-mail duplicado simultâneo). */

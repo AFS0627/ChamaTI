@@ -41,7 +41,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 
                         **Perfis:** `ADMIN`, `TECNICO` e `SOLICITANTE`. Cada operação indica quem pode executá-la.
 
-                        **Erros:** todas as respostas de erro (400, 401, 403, 404, 409, 422 e 429) seguem o modelo `ErroResponse`.
+                        **Erros:** todas as respostas de erro (400, 401, 403, 404, 409, 413, 422 e 429) seguem o modelo `ErroResponse`.
                         """),
         security = @SecurityRequirement(name = OpenApiConfig.ESQUEMA_BEARER))
 @SecurityScheme(

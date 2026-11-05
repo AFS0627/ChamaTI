@@ -1,5 +1,9 @@
 package br.com.chamati;
 
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
@@ -19,6 +23,17 @@ abstract class IntegrationTestBase {
     static final MySQLContainer<?> MYSQL = new MySQLContainer<>("mysql:8.0")
             .withCommand("--character-set-server=utf8mb4", "--collation-server=utf8mb4_0900_ai_ci");
 
+    /** Diretório temporário dos anexos, compartilhado pelas classes de teste. */
+    static final Path ANEXOS = diretorioTemporario();
+
+    private static Path diretorioTemporario() {
+        try {
+            return Files.createTempDirectory("chamati-anexos-teste");
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
+    }
+
     @DynamicPropertySource
     static void datasource(DynamicPropertyRegistry registry) {
         MYSQL.start(); // idempotente; só é chamado se o Docker estiver disponível
@@ -26,6 +41,7 @@ abstract class IntegrationTestBase {
         registry.add("spring.datasource.username", MYSQL::getUsername);
         registry.add("spring.datasource.password", MYSQL::getPassword);
         registry.add("spring.jpa.properties.hibernate.generate_statistics", () -> "true");
+        registry.add("app.anexos.diretorio", ANEXOS::toString);
         registry.add("app.security.jwt.secret", () -> "segredo-apenas-para-testes-0123456789-abcdefghij");
     }
 }

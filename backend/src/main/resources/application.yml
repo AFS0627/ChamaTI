@@ -18,11 +18,11 @@ spring:
       minimum-idle: 2
       connection-timeout: 20000
 
-  # Anexos: até 5 MB por arquivo (o limite do service é o mesmo).
+  # Upload de anexos: o limite por arquivo vem de app.anexos.tamanho-maximo.
   servlet:
     multipart:
-      max-file-size: 5MB
-      max-request-size: 6MB
+      max-file-size: ${app.anexos.tamanho-maximo:5MB}
+      max-request-size: 20MB
 
   # Hibernate apenas valida: o esquema pertence ao Flyway.
   jpa:
@@ -54,6 +54,11 @@ app:
   # Vazio = nenhuma origem externa. Ex.: CORS_ALLOWED_ORIGINS=https://chamati.exemplo.com.br
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:}
+  # Anexos dos chamados: arquivos em disco (use um volume persistente em produção), metadados no banco.
+  anexos:
+    diretorio: ${ANEXOS_DIR:./anexos}
+    tamanho-maximo: 5MB
+    maximo-por-chamado: 10
   # Primeiro ADMIN: criado na subida apenas se não houver administrador ativo e se e-mail e senha estiverem definidos.
   # Use uma senha provisória e troque-a no primeiro acesso; remova as variáveis depois.
   admin-inicial:

@@ -70,6 +70,11 @@ public final class MaquinaEstadosChamado {
         return de != StatusChamado.FECHADO;
     }
 
+    /** Mesma regra dos comentários: chamados fechados não recebem anexos. */
+    public static boolean podeAnexar(StatusChamado de) {
+        return de != StatusChamado.FECHADO;
+    }
+
     public static StatusChamado statusAposReabertura(boolean temTecnico) {
         return temTecnico ? StatusChamado.EM_ATENDIMENTO : StatusChamado.ABERTO;
     }
