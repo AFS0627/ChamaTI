@@ -97,6 +97,13 @@ class MaquinaEstadosChamadoTest {
     }
 
     @Test
+    void soChamadosResolvidosOuFechadosPodemSerAvaliados() {
+        for (StatusChamado s : StatusChamado.values()) {
+            assertThat(MaquinaEstadosChamado.podeAvaliar(s)).as(s.name()).isEqualTo(s == RESOLVIDO || s == FECHADO);
+        }
+    }
+
+    @Test
     void soChamadosFechadosNaoRecebemAnexos() {
         for (StatusChamado s : StatusChamado.values()) {
             assertThat(MaquinaEstadosChamado.podeAnexar(s)).as(s.name()).isEqualTo(s != FECHADO);

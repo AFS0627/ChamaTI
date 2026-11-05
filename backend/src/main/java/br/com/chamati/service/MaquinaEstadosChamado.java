@@ -75,6 +75,11 @@ public final class MaquinaEstadosChamado {
         return de != StatusChamado.FECHADO;
     }
 
+    /** O atendimento pode ser avaliado depois de resolvido (inclusive já fechado). */
+    public static boolean podeAvaliar(StatusChamado de) {
+        return de == StatusChamado.RESOLVIDO || de == StatusChamado.FECHADO;
+    }
+
     public static StatusChamado statusAposReabertura(boolean temTecnico) {
         return temTecnico ? StatusChamado.EM_ATENDIMENTO : StatusChamado.ABERTO;
     }

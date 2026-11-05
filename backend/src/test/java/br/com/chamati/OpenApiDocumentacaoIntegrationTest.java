@@ -62,6 +62,7 @@ class OpenApiDocumentacaoIntegrationTest extends IntegrationTestBase {
             "POST /api/chamados", "201",
             "POST /api/chamados/{chamadoId}/comentarios", "201",
             "POST /api/chamados/{chamadoId}/anexos", "201",
+            "POST /api/chamados/{chamadoId}/avaliacao", "201",
             "POST /api/auth/logout", "204",
             "POST /api/auth/logout-todos", "204");
 
