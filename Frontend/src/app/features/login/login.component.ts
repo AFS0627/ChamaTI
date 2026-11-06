@@ -11,34 +11,54 @@ import { mensagemDeErro } from '../../core/util/erro';
   imports: [ReactiveFormsModule],
   template: `
     <div class="login">
-      <form class="card login-card" [formGroup]="form" (ngSubmit)="entrar()" novalidate>
-        <h1>ChamaTI</h1>
-        <p class="muted">Entre com seu e-mail e senha.</p>
+      <section class="login-marca" aria-hidden="true">
+        <div class="logo">
+          <svg class="chama" viewBox="0 0 24 24" fill="currentColor">
+            <path
+              d="M12.6 2.2c.4 3.1-1 4.8-2.4 6.5C8.8 10.4 7.5 12 7.5 14.4a4.9 4.9 0 0 0 9.8.3c0-2.3-1.2-3.8-2.2-5.1-.3 1.3-1 2.1-2 2.6.7-3.5-.1-6.7-.5-10Z"
+            />
+          </svg>
+          <span>Chama<span>TI</span></span>
+        </div>
+        <h2>Chamados de TI sem perder o prazo.</h2>
+        <p>Abra, acompanhe e resolva solicitações com SLA claro e histórico completo de cada atendimento.</p>
+        <ul>
+          <li>Acompanhe o status em tempo real</li>
+          <li>Prazos de primeira resposta e resolução</li>
+          <li>Anexos, comentários e avaliação do atendimento</li>
+        </ul>
+      </section>
 
-        <label class="campo">
-          <span>E-mail</span>
-          <input type="email" formControlName="email" autocomplete="username" />
-          @if (form.controls.email.touched && form.controls.email.invalid) {
-            <small class="erro">Informe um e-mail válido.</small>
+      <main class="login-form">
+        <form class="card login-card" [formGroup]="form" (ngSubmit)="entrar()" novalidate>
+          <h1>Entrar</h1>
+          <p class="muted">Use seu e-mail e senha corporativos.</p>
+
+          <label class="campo">
+            <span>E-mail</span>
+            <input type="email" formControlName="email" autocomplete="username" />
+            @if (form.controls.email.touched && form.controls.email.invalid) {
+              <small class="erro">Informe um e-mail válido.</small>
+            }
+          </label>
+
+          <label class="campo">
+            <span>Senha</span>
+            <input type="password" formControlName="senha" autocomplete="current-password" />
+            @if (form.controls.senha.touched && form.controls.senha.invalid) {
+              <small class="erro">Informe a senha.</small>
+            }
+          </label>
+
+          @if (erro(); as mensagem) {
+            <p class="alerta erro" role="alert">{{ mensagem }}</p>
           }
-        </label>
 
-        <label class="campo">
-          <span>Senha</span>
-          <input type="password" formControlName="senha" autocomplete="current-password" />
-          @if (form.controls.senha.touched && form.controls.senha.invalid) {
-            <small class="erro">Informe a senha.</small>
-          }
-        </label>
-
-        @if (erro(); as mensagem) {
-          <p class="alerta erro" role="alert">{{ mensagem }}</p>
-        }
-
-        <button type="submit" class="btn btn-primary" [disabled]="enviando()">
-          {{ enviando() ? 'Entrando…' : 'Entrar' }}
-        </button>
-      </form>
+          <button type="submit" class="btn btn-primary" [disabled]="enviando()">
+            {{ enviando() ? 'Entrando…' : 'Entrar' }}
+          </button>
+        </form>
+      </main>
     </div>
   `,
 })

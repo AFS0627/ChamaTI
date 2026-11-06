@@ -15,7 +15,6 @@ import { PRIORIDADES, STATUS_LISTA, rotuloPrioridade, rotuloStatus } from '../..
   template: `
     <div class="barra">
       <h1>Chamados</h1>
-      <a class="btn btn-primary" routerLink="/chamados/novo">Novo chamado</a>
     </div>
 
     <form class="card filtros" [formGroup]="form" (ngSubmit)="carregar(0)">
@@ -53,7 +52,7 @@ import { PRIORIDADES, STATUS_LISTA, rotuloPrioridade, rotuloStatus } from '../..
       <p class="alerta erro" role="alert">{{ mensagem }}</p>
     }
 
-    <div class="card tabela">
+    <div class="card tabela cartoes">
       @if (resultado(); as r) {
         @if (r.conteudo.length === 0) {
           <p class="muted">Nenhum chamado encontrado.</p>
@@ -74,14 +73,14 @@ import { PRIORIDADES, STATUS_LISTA, rotuloPrioridade, rotuloStatus } from '../..
             <tbody>
               @for (c of r.conteudo; track c.id) {
                 <tr>
-                  <td><a [routerLink]="['/chamados', c.id]">{{ c.protocolo }}</a></td>
-                  <td>{{ c.titulo }}</td>
-                  <td><span class="badge" [class]="'status-' + c.status">{{ rotuloStatus(c.status) }}</span></td>
-                  <td><span class="badge" [class]="'prio-' + c.prioridade">{{ rotuloPrioridade(c.prioridade) }}</span></td>
-                  <td>{{ c.categoriaNome }}</td>
-                  <td>{{ c.solicitanteNome }}</td>
-                  <td>{{ c.tecnicoNome ?? '—' }}</td>
-                  <td>{{ c.criadoEm | date: 'dd/MM/yyyy HH:mm' }}</td>
+                  <td data-rotulo="Protocolo"><a [routerLink]="['/chamados', c.id]">{{ c.protocolo }}</a></td>
+                  <td data-rotulo="Título">{{ c.titulo }}</td>
+                  <td data-rotulo="Status"><span class="badge" [class]="'status-' + c.status">{{ rotuloStatus(c.status) }}</span></td>
+                  <td data-rotulo="Prioridade"><span class="badge" [class]="'prio-' + c.prioridade">{{ rotuloPrioridade(c.prioridade) }}</span></td>
+                  <td data-rotulo="Categoria">{{ c.categoriaNome }}</td>
+                  <td data-rotulo="Solicitante">{{ c.solicitanteNome }}</td>
+                  <td data-rotulo="Técnico">{{ c.tecnicoNome ?? '—' }}</td>
+                  <td data-rotulo="Aberto em">{{ c.criadoEm | date: 'dd/MM/yyyy HH:mm' }}</td>
                 </tr>
               }
             </tbody>

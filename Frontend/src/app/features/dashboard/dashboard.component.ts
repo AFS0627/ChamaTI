@@ -32,20 +32,20 @@ import { PRIORIDADES, STATUS_LISTA, rotuloPrioridade, rotuloStatus } from '../..
     }
 
     @if (dados(); as d) {
-      <section class="grade">
-        <a class="card indicador" routerLink="/chamados">
+      <section class="grade" aria-label="Indicadores">
+        <a class="card indicador tom-azul" routerLink="/chamados">
           <strong>{{ d.totais.emAberto }}</strong><span>Em aberto</span>
         </a>
-        <a class="card indicador" routerLink="/chamados" [queryParams]="{ semTecnico: true }">
+        <a class="card indicador tom-ambar" routerLink="/chamados" [queryParams]="{ semTecnico: true }">
           <strong>{{ d.totais.semTecnico }}</strong><span>Sem técnico (fila)</span>
         </a>
-        <a class="card indicador" routerLink="/chamados" [queryParams]="{ atrasados: true }">
+        <a class="card indicador tom-vermelho" routerLink="/chamados" [queryParams]="{ atrasados: true }">
           <strong>{{ d.totais.emAtrasoResolucao }}</strong><span>Resolução atrasada</span>
         </a>
-        <div class="card indicador">
+        <div class="card indicador tom-vermelho">
           <strong>{{ d.totais.emAtrasoPrimeiraResposta }}</strong><span>1ª resposta atrasada</span>
         </div>
-        <div class="card indicador">
+        <div class="card indicador tom-azul">
           <strong>{{ d.totais.atribuidosAMim }}</strong><span>Atribuídos a mim</span>
         </div>
         <div class="card indicador">
@@ -61,6 +61,11 @@ import { PRIORIDADES, STATUS_LISTA, rotuloPrioridade, rotuloStatus } from '../..
               @for (s of statusLista; track s) {
                 <tr>
                   <td>{{ rotuloStatus(s) }}</td>
+                  <td class="celula-medidor">
+                    <div class="medidor" aria-hidden="true">
+                      <span [class]="'status-' + s" [style.width.%]="percentual(d.porStatus[s], maxStatus(d))"></span>
+                    </div>
+                  </td>
                   <td class="num">{{ d.porStatus[s] }}</td>
                 </tr>
               }
@@ -74,6 +79,11 @@ import { PRIORIDADES, STATUS_LISTA, rotuloPrioridade, rotuloStatus } from '../..
               @for (p of prioridades; track p) {
                 <tr>
                   <td>{{ rotuloPrioridade(p) }}</td>
+                  <td class="celula-medidor">
+                    <div class="medidor" aria-hidden="true">
+                      <span [class]="'prio-' + p" [style.width.%]="percentual(d.emAbertoPorPrioridade[p], maxPrioridade(d))"></span>
+                    </div>
+                  </td>
                   <td class="num">{{ d.emAbertoPorPrioridade[p] }}</td>
                 </tr>
               }
@@ -93,6 +103,11 @@ import { PRIORIDADES, STATUS_LISTA, rotuloPrioridade, rotuloStatus } from '../..
                 @for (c of d.emAbertoPorCategoria; track c.categoriaId) {
                   <tr>
                     <td>{{ c.nome }}</td>
+                    <td class="celula-medidor">
+                      <div class="medidor" aria-hidden="true">
+                        <span [style.width.%]="percentual(c.total, maxCategoria(d))"></span>
+                      </div>
+                    </td>
                     <td class="num">{{ c.total }}</td>
                   </tr>
                 }
@@ -141,6 +156,23 @@ export class DashboardComponent implements OnInit {
   protected alterarDias(evento: Event): void {
     this.dias.set(Number((evento.target as HTMLSelectElement).value));
     this.carregar();
+  }
+
+  protected maxStatus(d: Dashboard): number {
+    return Math.max(1, ...Object.values(d.porStatus));
+  }
+
+  protected maxPrioridade(d: Dashboard): number {
+    return Math.max(1, ...Object.values(d.emAbertoPorPrioridade));
+  }
+
+  protected maxCategoria(d: Dashboard): number {
+    return Math.max(1, ...d.emAbertoPorCategoria.map((c) => c.total));
+  }
+
+  /** Largura da barra, de 0 a 100. */
+  protected percentual(valor: number, maximo: number): number {
+    return Math.round((valor / maximo) * 100);
   }
 
   private carregar(): void {

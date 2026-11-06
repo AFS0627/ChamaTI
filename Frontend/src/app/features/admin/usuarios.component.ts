@@ -14,7 +14,7 @@ import { PERFIS, rotuloPerfil } from '../../core/util/rotulos';
   imports: [ReactiveFormsModule, DatePipe],
   template: `
     <div class="barra">
-      <h2>Usuários</h2>
+      <h1>Usuários</h1>
       <button type="button" class="btn btn-primary" (click)="mostrarNovo.set(!mostrarNovo())">
         {{ mostrarNovo() ? 'Cancelar' : 'Novo usuário' }}
       </button>

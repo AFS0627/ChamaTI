@@ -3,6 +3,7 @@ import { Component, effect, inject, input, signal, untracked } from '@angular/co
 import { ChamadosService } from '../../core/api/chamados.service';
 import { Chamado, Historico } from '../../core/models/api.models';
 import { mensagemDeErro } from '../../core/util/erro';
+import { rotuloEvento, rotuloValorHistorico } from '../../core/util/rotulos';
 
 @Component({
   selector: 'app-chamado-historico',
@@ -21,12 +22,12 @@ import { mensagemDeErro } from '../../core/util/erro';
           @for (e of eventos(); track e.id) {
             <li>
               <span class="muted">{{ e.criadoEm | date: 'dd/MM/yyyy HH:mm' }}</span>
-              <strong>{{ e.tipoEvento.replaceAll('_', ' ') }}</strong>
+              <strong>{{ rotuloEvento(e.tipoEvento) }}</strong>
               @if (e.descricao) {
                 <span>{{ e.descricao }}</span>
               }
               @if (e.valorAnterior || e.valorNovo) {
-                <span class="muted">{{ e.valorAnterior ?? '—' }} → {{ e.valorNovo ?? '—' }}</span>
+                <span class="muted">{{ rotuloValor(e.valorAnterior) }} → {{ rotuloValor(e.valorNovo) }}</span>
               }
               @if (e.autor) {
                 <span class="muted">por {{ e.autor.nome }}</span>
@@ -46,6 +47,8 @@ export class ChamadoHistoricoComponent {
 
   protected readonly eventos = signal<Historico[]>([]);
   protected readonly erro = signal<string | null>(null);
+  protected readonly rotuloEvento = rotuloEvento;
+  protected readonly rotuloValor = rotuloValorHistorico;
 
   constructor() {
     effect(() => {

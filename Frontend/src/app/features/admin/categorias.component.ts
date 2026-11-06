@@ -10,7 +10,7 @@ import { mensagemDeErro } from '../../core/util/erro';
   standalone: true,
   imports: [ReactiveFormsModule],
   template: `
-    <h2>Categorias</h2>
+    <h1>Categorias</h1>
 
     <form class="card formulario linha" [formGroup]="form" (ngSubmit)="criar()" novalidate>
       <label class="campo">

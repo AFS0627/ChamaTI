@@ -10,7 +10,7 @@ import { mensagemDeErro } from '../../core/util/erro';
   standalone: true,
   imports: [DatePipe, RouterLink],
   template: `
-    <h2>Avaliações do atendimento</h2>
+    <h1>Avaliações do atendimento</h1>
 
     @if (erro(); as mensagem) {
       <p class="alerta erro" role="alert">{{ mensagem }}</p>
