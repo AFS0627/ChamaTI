@@ -140,7 +140,7 @@ import { PERFIS, rotuloPerfil } from '../../core/util/rotulos';
             Próxima
           </button>
         </div>
-      } @else {
+      } @else if (carregando()) {
         <p class="muted">Carregando…</p>
       }
     </div>
@@ -169,6 +169,7 @@ export class UsuariosComponent implements OnInit {
   protected readonly erro = signal<string | null>(null);
   protected readonly erroNovo = signal<string | null>(null);
   protected readonly salvando = signal(false);
+  protected readonly carregando = signal(true);
   protected readonly mostrarNovo = signal(false);
   protected readonly perfis = PERFIS;
   protected readonly rotuloPerfil = rotuloPerfil;
@@ -184,8 +185,10 @@ export class UsuariosComponent implements OnInit {
   protected carregar(pagina: number): void {
     const f = this.filtroForm.getRawValue();
     this.erro.set(null);
+    this.carregando.set(true);
     this.servico
       .listar({ q: f.q, perfil: f.perfil, ativo: f.ativo === '' ? null : f.ativo === 'true', pagina })
+      .pipe(finalize(() => this.carregando.set(false)))
       .subscribe({
         next: (r) => this.resultado.set(r),
         error: (e: unknown) => this.erro.set(mensagemDeErro(e)),

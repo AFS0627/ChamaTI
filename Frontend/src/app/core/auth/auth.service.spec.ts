@@ -2,7 +2,6 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
-import { API_URL } from '../config';
 import { TokenResponse, UsuarioSessao } from '../models/api.models';
 import { AuthService } from './auth.service';
 
@@ -46,7 +45,7 @@ describe('AuthService', () => {
     const recebidos: UsuarioSessao[] = [];
     auth.login('admin@chamati.local', 'Senha@123').subscribe((u) => recebidos.push(u));
 
-    const req = http.expectOne(`${API_URL}/api/auth/login`);
+    const req = http.expectOne(`/api/auth/login`);
     expect(req.request.method).toBe('POST');
     expect(req.request.body).toEqual({ email: 'admin@chamati.local', senha: 'Senha@123' });
     req.flush(tokens('1'));
@@ -59,13 +58,13 @@ describe('AuthService', () => {
 
   it('renova uma única vez para chamadas simultâneas', () => {
     auth.login('a@a.com', 'x').subscribe();
-    http.expectOne(`${API_URL}/api/auth/login`).flush(tokens('1'));
+    http.expectOne(`/api/auth/login`).flush(tokens('1'));
 
     const novos: string[] = [];
     auth.renovar().subscribe((t) => novos.push(t));
     auth.renovar().subscribe((t) => novos.push(t));
 
-    const req = http.expectOne(`${API_URL}/api/auth/refresh`);
+    const req = http.expectOne(`/api/auth/refresh`);
     expect(req.request.body).toEqual({ refreshToken: 'ref1' });
     req.flush(tokens('2'));
 
@@ -75,10 +74,10 @@ describe('AuthService', () => {
 
   it('limpa a sessão no logout mesmo se a API falhar', () => {
     auth.login('a@a.com', 'x').subscribe();
-    http.expectOne(`${API_URL}/api/auth/login`).flush(tokens('1'));
+    http.expectOne(`/api/auth/login`).flush(tokens('1'));
 
     auth.logout().subscribe();
-    http.expectOne(`${API_URL}/api/auth/logout`).flush(null, { status: 500, statusText: 'Erro' });
+    http.expectOne(`/api/auth/logout`).flush(null, { status: 500, statusText: 'Erro' });
 
     expect(auth.autenticado()).toBe(false);
     expect(localStorage.getItem('chamati.sessao')).toBeNull();

@@ -1,7 +1,7 @@
 import { HttpErrorResponse, HttpInterceptorFn, HttpRequest } from '@angular/common/http';
 import { inject } from '@angular/core';
 import { catchError, switchMap, throwError } from 'rxjs';
-import { API_URL } from '../config';
+import { API_CONFIG, ehRequisicaoDaApi } from '../http/api-config';
 import { AuthService } from './auth.service';
 
 const ROTAS_PUBLICAS = ['/api/auth/login', '/api/auth/refresh', '/api/auth/logout'];
@@ -13,8 +13,9 @@ function comToken(req: HttpRequest<unknown>, token: string): HttpRequest<unknown
 /** Envia o access token e, ao receber 401, renova a sessão uma vez e repete a chamada. */
 export const authInterceptor: HttpInterceptorFn = (req, next) => {
   const auth = inject(AuthService);
-  const publica = ROTAS_PUBLICAS.some((rota) => req.url === `${API_URL}${rota}`);
-  if (!req.url.startsWith(API_URL) || publica) {
+  const api = inject(API_CONFIG);
+  const publica = ROTAS_PUBLICAS.some((rota) => req.url === `${api.baseUrl}${rota}`);
+  if (!ehRequisicaoDaApi(api, req.url) || publica) {
     return next(req);
   }
 

@@ -1,6 +1,7 @@
 import { DatePipe } from '@angular/common';
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
+import { finalize } from 'rxjs';
 import { ChamadosService } from '../../core/api/chamados.service';
 import { Chamado } from '../../core/models/api.models';
 import { mensagemDeErro } from '../../core/util/erro';
@@ -87,7 +88,7 @@ import { ChamadoHistoricoComponent } from './chamado-historico.component';
       <app-chamado-anexos [chamado]="c" />
       <app-chamado-comentarios [chamado]="c" />
       <app-chamado-historico [chamado]="c" />
-    } @else if (!erro()) {
+    } @else if (carregando()) {
       <p class="muted">Carregando…</p>
     }
   `,
@@ -98,6 +99,7 @@ export class ChamadoDetalheComponent implements OnInit {
 
   protected readonly chamado = signal<Chamado | null>(null);
   protected readonly erro = signal<string | null>(null);
+  protected readonly carregando = signal(true);
 
   protected readonly rotuloStatus = rotuloStatus;
   protected readonly rotuloPrioridade = rotuloPrioridade;
@@ -107,11 +109,15 @@ export class ChamadoDetalheComponent implements OnInit {
     const id = Number(this.rota.snapshot.paramMap.get('id'));
     if (!Number.isInteger(id) || id <= 0) {
       this.erro.set('Chamado inválido.');
+      this.carregando.set(false);
       return;
     }
-    this.servico.buscar(id).subscribe({
-      next: (c) => this.chamado.set(c),
-      error: (e: unknown) => this.erro.set(mensagemDeErro(e)),
-    });
+    this.servico
+      .buscar(id)
+      .pipe(finalize(() => this.carregando.set(false)))
+      .subscribe({
+        next: (c) => this.chamado.set(c),
+        error: (e: unknown) => this.erro.set(mensagemDeErro(e)),
+      });
   }
 }

@@ -1,8 +1,8 @@
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpContext } from '@angular/common/http';
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { Observable, catchError, finalize, map, of, shareReplay, tap, throwError } from 'rxjs';
-import { API_URL } from '../config';
+import { SILENCIAR_ERROS } from '../http/contexto';
 import { TokenResponse, UsuarioSessao } from '../models/api.models';
 
 const CHAVE = 'chamati.sessao';
@@ -29,7 +29,7 @@ export class AuthService {
   }
 
   login(email: string, senha: string): Observable<UsuarioSessao> {
-    return this.http.post<TokenResponse>(`${API_URL}/api/auth/login`, { email, senha }).pipe(
+    return this.http.post<TokenResponse>('/api/auth/login', { email, senha }).pipe(
       tap((r) => this.guardar(r)),
       map((r) => r.usuario),
     );
@@ -46,7 +46,7 @@ export class AuthService {
     }
     if (!this.renovando$) {
       this.renovando$ = this.http
-        .post<TokenResponse>(`${API_URL}/api/auth/refresh`, { refreshToken: atual.refreshToken })
+        .post<TokenResponse>('/api/auth/refresh', { refreshToken: atual.refreshToken })
         .pipe(
           tap((r) => this.guardar(r)),
           map((r) => r.accessToken),
@@ -60,7 +60,11 @@ export class AuthService {
   logout(): Observable<void> {
     const atual = this.sessao();
     const requisicao: Observable<unknown> = atual
-      ? this.http.post(`${API_URL}/api/auth/logout`, { refreshToken: atual.refreshToken })
+      ? this.http.post(
+          '/api/auth/logout',
+          { refreshToken: atual.refreshToken },
+          { context: new HttpContext().set(SILENCIAR_ERROS, true) },
+        )
       : of(null);
     return requisicao.pipe(
       catchError(() => of(null)),

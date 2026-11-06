@@ -2,10 +2,12 @@ import { HttpClient, provideHttpClient, withInterceptors } from '@angular/common
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
-import { API_URL } from '../config';
+import { provideApiConfig } from '../http/api-config';
+import { apiUrlInterceptor } from '../http/api-url.interceptor';
 import { TokenResponse } from '../models/api.models';
 import { authInterceptor } from './auth.interceptor';
 
+const BASE = 'http://api.teste';
 const USUARIO = { id: 1, nome: 'Admin', email: 'admin@chamati.local', perfil: 'ADMIN' as const };
 
 function tokens(sufixo: string): TokenResponse {
@@ -30,7 +32,12 @@ describe('authInterceptor', () => {
       JSON.stringify({ accessToken: 'acc1', refreshToken: 'ref1', usuario: USUARIO }),
     );
     TestBed.configureTestingModule({
-      providers: [provideHttpClient(withInterceptors([authInterceptor])), provideHttpClientTesting(), provideRouter([{ path: 'login', children: [] }])],
+      providers: [
+        provideApiConfig({ baseUrl: BASE }),
+        provideHttpClient(withInterceptors([apiUrlInterceptor, authInterceptor])),
+        provideHttpClientTesting(),
+        provideRouter([{ path: 'login', children: [] }]),
+      ],
     });
     client = TestBed.inject(HttpClient);
     http = TestBed.inject(HttpTestingController);
@@ -42,29 +49,37 @@ describe('authInterceptor', () => {
   });
 
   it('envia o access token nas chamadas à API', () => {
-    client.get(`${API_URL}/api/chamados`).subscribe();
+    client.get('/api/chamados').subscribe();
 
-    const req = http.expectOne(`${API_URL}/api/chamados`);
+    const req = http.expectOne(`${BASE}/api/chamados`);
     expect(req.request.headers.get('Authorization')).toBe('Bearer acc1');
     req.flush({});
   });
 
   it('não envia o token no login', () => {
-    client.post(`${API_URL}/api/auth/login`, {}).subscribe();
+    client.post('/api/auth/login', {}).subscribe();
 
-    const req = http.expectOne(`${API_URL}/api/auth/login`);
+    const req = http.expectOne(`${BASE}/api/auth/login`);
+    expect(req.request.headers.has('Authorization')).toBe(false);
+    req.flush({});
+  });
+
+  it('não envia o token para endereços fora da API', () => {
+    client.get('https://outro.site/dados').subscribe();
+
+    const req = http.expectOne('https://outro.site/dados');
     expect(req.request.headers.has('Authorization')).toBe(false);
     req.flush({});
   });
 
   it('renova o token ao receber 401 e repete a chamada', () => {
     const respostas: unknown[] = [];
-    client.get(`${API_URL}/api/chamados`).subscribe((r) => respostas.push(r));
+    client.get('/api/chamados').subscribe((r) => respostas.push(r));
 
-    http.expectOne(`${API_URL}/api/chamados`).flush({}, { status: 401, statusText: 'Unauthorized' });
-    http.expectOne(`${API_URL}/api/auth/refresh`).flush(tokens('2'));
+    http.expectOne(`${BASE}/api/chamados`).flush({}, { status: 401, statusText: 'Unauthorized' });
+    http.expectOne(`${BASE}/api/auth/refresh`).flush(tokens('2'));
 
-    const repetida = http.expectOne(`${API_URL}/api/chamados`);
+    const repetida = http.expectOne(`${BASE}/api/chamados`);
     expect(repetida.request.headers.get('Authorization')).toBe('Bearer acc2');
     repetida.flush({ ok: true });
 

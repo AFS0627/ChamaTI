@@ -62,7 +62,7 @@ import { mensagemDeErro } from '../../core/util/erro';
             </tbody>
           </table>
         }
-      } @else {
+      } @else if (carregando()) {
         <p class="muted">Carregando…</p>
       }
     </div>
@@ -79,6 +79,7 @@ export class CategoriasComponent implements OnInit {
   protected readonly categorias = signal<Categoria[] | null>(null);
   protected readonly erro = signal<string | null>(null);
   protected readonly salvando = signal(false);
+  protected readonly carregando = signal(true);
 
   ngOnInit(): void {
     this.carregar();
@@ -106,9 +107,13 @@ export class CategoriasComponent implements OnInit {
   }
 
   private carregar(): void {
-    this.servico.listar(0, 100).subscribe({
-      next: (pagina) => this.categorias.set(pagina.conteudo),
-      error: (e: unknown) => this.erro.set(mensagemDeErro(e)),
-    });
+    this.carregando.set(true);
+    this.servico
+      .listar(0, 100)
+      .pipe(finalize(() => this.carregando.set(false)))
+      .subscribe({
+        next: (pagina) => this.categorias.set(pagina.conteudo),
+        error: (e: unknown) => this.erro.set(mensagemDeErro(e)),
+      });
   }
 }

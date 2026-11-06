@@ -1,7 +1,6 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
-import { API_URL } from '../config';
 import {
   Anexo,
   Avaliacao,
@@ -20,7 +19,7 @@ import { montarParams } from './http-params';
 @Injectable({ providedIn: 'root' })
 export class ChamadosService {
   private readonly http = inject(HttpClient);
-  private readonly base = `${API_URL}/api/chamados`;
+  private readonly base = `/api/chamados`;
 
   listar(f: FiltrosChamados): Observable<Pagina<ChamadoResumo>> {
     const params = montarParams({

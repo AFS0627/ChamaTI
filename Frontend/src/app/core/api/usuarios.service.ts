@@ -1,7 +1,6 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
-import { API_URL } from '../config';
 import { Pagina, Perfil, UsuarioCriar, UsuarioResumo } from '../models/api.models';
 import { montarParams } from './http-params';
 
@@ -17,7 +16,7 @@ export interface FiltrosUsuarios {
 @Injectable({ providedIn: 'root' })
 export class UsuariosService {
   private readonly http = inject(HttpClient);
-  private readonly base = `${API_URL}/api/usuarios`;
+  private readonly base = `/api/usuarios`;
 
   listar(f: FiltrosUsuarios): Observable<Pagina<UsuarioResumo>> {
     const params = montarParams({
