@@ -1,9 +1,10 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, DestroyRef, inject, signal } from '@angular/core';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { finalize } from 'rxjs';
 import { AuthService } from '../../core/auth/auth.service';
 import { mensagemDeErro } from '../../core/util/erro';
+import { EsperaPorTentativas, segundosParaNovaTentativa } from '../../core/util/espera';
 
 @Component({
   selector: 'app-login',
@@ -54,8 +55,8 @@ import { mensagemDeErro } from '../../core/util/erro';
             <p class="alerta erro" role="alert">{{ mensagem }}</p>
           }
 
-          <button type="submit" class="btn btn-primary" [disabled]="enviando()">
-            {{ enviando() ? 'Entrando…' : 'Entrar' }}
+          <button type="submit" class="btn btn-primary" [disabled]="enviando() || espera.restante() > 0">
+            {{ espera.restante() > 0 ? 'Aguarde ' + espera.restante() + ' s' : enviando() ? 'Entrando…' : 'Entrar' }}
           </button>
         </form>
       </main>
@@ -74,6 +75,8 @@ export class LoginComponent {
   });
   protected readonly erro = signal<string | null>(null);
   protected readonly enviando = signal(false);
+  /** Após 5 falhas em 15 min o backend responde 429 com Retry-After. */
+  protected readonly espera = new EsperaPorTentativas(inject(DestroyRef));
 
   protected entrar(): void {
     if (this.form.invalid) {
@@ -88,7 +91,13 @@ export class LoginComponent {
       .pipe(finalize(() => this.enviando.set(false)))
       .subscribe({
         next: () => void this.router.navigateByUrl(this.destino()),
-        error: (e: unknown) => this.erro.set(mensagemDeErro(e)),
+        error: (e: unknown) => {
+          this.erro.set(mensagemDeErro(e));
+          const segundos = segundosParaNovaTentativa(e);
+          if (segundos !== null) {
+            this.espera.iniciar(segundos);
+          }
+        },
       });
   }
 

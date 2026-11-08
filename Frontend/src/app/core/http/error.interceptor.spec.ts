@@ -4,6 +4,7 @@ import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { authInterceptor } from '../auth/auth.interceptor';
 import { AuthService } from '../auth/auth.service';
+import { aguardar, guardarSessaoDeTeste, semTrava } from '../auth/auth.testing';
 import { NotificacaoService } from '../notificacoes/notificacao.service';
 import { provideApiConfig } from './api-config';
 import { ApiError } from './api-error';
@@ -12,8 +13,6 @@ import { SILENCIAR_ERROS } from './contexto';
 import { erroInterceptor } from './error.interceptor';
 
 const BASE = 'http://api.teste';
-const USUARIO = { id: 1, nome: 'Admin', email: 'admin@chamati.local', perfil: 'ADMIN' as const };
-
 describe('erroInterceptor (cadeia completa)', () => {
   let client: HttpClient;
   let http: HttpTestingController;
@@ -27,6 +26,7 @@ describe('erroInterceptor (cadeia completa)', () => {
         provideHttpClient(withInterceptors([erroInterceptor, apiUrlInterceptor, authInterceptor])),
         provideHttpClientTesting(),
         provideRouter([{ path: 'login', children: [] }]),
+        semTrava,
       ],
     });
     client = TestBed.inject(HttpClient);
@@ -104,17 +104,16 @@ describe('erroInterceptor (cadeia completa)', () => {
     expect(avisos.itens().length).toBe(0);
   });
 
-  it('sessão que não renova: um único aviso, sessão encerrada e erro já notificado', () => {
-    localStorage.setItem(
-      'chamati.sessao',
-      JSON.stringify({ accessToken: 'acc1', refreshToken: 'ref1', usuario: USUARIO }),
-    );
+  it('sessão que não renova: um único aviso, sessão encerrada e erro já notificado', async () => {
+    guardarSessaoDeTeste('1');
     const erros = falhas(client.get('/api/chamados'));
 
     http.expectOne(`${BASE}/api/chamados`).flush({}, { status: 401, statusText: 'Unauthorized' });
     http
       .expectOne(`${BASE}/api/auth/refresh`)
       .flush({ mensagem: 'Refresh token inválido.' }, { status: 401, statusText: 'Unauthorized' });
+
+    await aguardar();
 
     expect(erros.length).toBe(1);
     expect((erros[0] as ApiError).notificado).toBe(true);

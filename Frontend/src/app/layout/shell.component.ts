@@ -11,6 +11,7 @@ const ROTULOS: Record<string, string> = {
   dashboard: 'Dashboard',
   chamados: 'Chamados',
   novo: 'Novo chamado',
+  conta: 'Minha conta',
   admin: 'Administração',
   usuarios: 'Usuários',
   categorias: 'Categorias',
@@ -89,11 +90,14 @@ const ROTULOS: Record<string, string> = {
 
         @if (usuario(); as u) {
           <div class="lateral-rodape">
-            <span class="avatar" aria-hidden="true">{{ iniciais() }}</span>
-            <div class="quem">
-              <strong>{{ u.nome }}</strong>
-              <span>{{ rotuloPerfil(u.perfil) }}</span>
-            </div>
+            <a class="conta-link" routerLink="/conta" routerLinkActive="ativo" ariaCurrentWhenActive="page" title="Minha conta">
+              <span class="avatar" aria-hidden="true">{{ iniciais() }}</span>
+              <span class="quem">
+                <strong>{{ u.nome }}</strong>
+                <span>{{ rotuloPerfil(u.perfil) }}</span>
+              </span>
+              <span class="sr-only">Minha conta</span>
+            </a>
             <button type="button" class="btn-sair" (click)="sair()" title="Sair" aria-label="Sair">
               <svg class="icone" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                 <path d="M9 4H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h4" /><path d="M16 17l5-5-5-5M21 12H9" />

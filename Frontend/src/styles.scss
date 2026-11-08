@@ -233,6 +233,24 @@ a {
   padding: 0.9rem 1rem;
   border-top: 1px solid rgb(255 255 255 / 8%);
 
+  .conta-link {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    flex: 1;
+    min-width: 0;
+    padding: 0.3rem;
+    margin: -0.3rem;
+    color: inherit;
+    text-decoration: none;
+    border-radius: 10px;
+
+    &:hover,
+    &.ativo {
+      background: rgb(255 255 255 / 6%);
+    }
+  }
+
   .quem {
     min-width: 0;
     flex: 1;
@@ -463,6 +481,11 @@ a {
     flex-direction: column;
     gap: 0.5rem;
     padding: 0.9rem 0;
+
+    .conta-link {
+      flex: none;
+      margin: 0;
+    }
 
     .quem {
       display: none;
@@ -1529,4 +1552,13 @@ td.celula-medidor {
   .toast {
     animation: none;
   }
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }

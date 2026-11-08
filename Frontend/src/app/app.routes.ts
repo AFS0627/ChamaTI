@@ -21,6 +21,11 @@ export const routes: Routes = [
         loadComponent: () => import('./features/dashboard/dashboard.component').then((m) => m.DashboardComponent),
       },
       {
+        path: 'conta',
+        title: 'Minha conta · ChamaTI',
+        loadComponent: () => import('./features/conta/conta.component').then((m) => m.ContaComponent),
+      },
+      {
         path: 'chamados',
         loadChildren: () => import('./features/chamados/chamados.routes').then((m) => m.CHAMADOS_ROUTES),
       },
